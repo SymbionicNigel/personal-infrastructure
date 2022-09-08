@@ -13,7 +13,12 @@ services:
       - "8080:8080"
     volumes:
       # So that Traefik can listen to the Docker events
-      - $PWD/var/run/docker.sock:/var/run/docker.sock
+      - /var/run/docker.sock:/var/run/docker.sock
+  whoami:
+    # A container that exposes an API to show its IP address
+    image: traefik/whoami
+    labels:
+      - "traefik.http.routers.whoami.rule=Host(`whoami.docker.localhost`)"
   vault: # https://hub.docker.com/_/vault
     image: vault:${VAULT_VERSION:-latest}
     restart: unless-stopped
@@ -32,7 +37,7 @@ services:
       - 8500:8500
   gitlab:
     image: 'gitlab/gitlab-ce:${GITLAB_VERSION:-latest}'
-    restart: always
+    restart: unless-stopped
     # TODO: Either configure correct values for enternal_url and hostname for prod or make them configurable 
     hostname: 'localhost:80' # 'gitlab.symbionic.tech' 
     environment:
