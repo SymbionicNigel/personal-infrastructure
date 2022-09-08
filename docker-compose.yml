@@ -43,8 +43,8 @@ services:
       - '80:80'
       - '443:443'
       - '22:22'
-    volumes: # TODO: Need to make sure that $GITLAB_HOME is populated when deploying
-      - '$GITLAB_HOME/config:/etc/gitlab'
-      - '$GITLAB_HOME/logs:/var/log/gitlab'
-      - '$GITLAB_HOME/data:/var/opt/gitlab'
+    volumes:
+      - '${GITLAB_HOME:?err}/config:/etc/gitlab'
+      - '${GITLAB_HOME:?err}/logs:/var/log/gitlab'
+      - '${GITLAB_HOME:?err}/data:/var/opt/gitlab'
     shm_size: '256m'
