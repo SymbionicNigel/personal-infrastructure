@@ -3,7 +3,7 @@ version: '3.7'
 services:
   traefik-reverse-proxy:
     # The official v2 Traefik docker image
-    image: traefik:v2.8
+    image: traefik:${TRAEFIK_VERSION:-v2.8}
     # Enables the web UI and tells Traefik to listen to docker
     command: --api.insecure=true --providers.docker
     ports:
@@ -15,7 +15,7 @@ services:
       # So that Traefik can listen to the Docker events
       - $PWD/var/run/docker.sock:/var/run/docker.sock
   vault: # https://hub.docker.com/_/vault
-    image: vault
+    image: vault:${VAULT_VERSION:-latest}
     restart: unless-stopped
     cap_add: 
       - IPC_LOCK
@@ -31,7 +31,7 @@ services:
     ports:
       - 8500:8500
   gitlab:
-    image: 'gitlab/gitlab-ce:latest'
+    image: 'gitlab/gitlab-ce:${GITLAB_VERSION:-latest}'
     restart: always
     # TODO: Either configure correct values for enternal_url and hostname for prod or make them configurable 
     hostname: 'localhost:80' # 'gitlab.symbionic.tech' 
