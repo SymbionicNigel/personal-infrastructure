@@ -1,0 +1,1 @@
+# TODO: create bash script to append subdomain to hostname for local linux development
