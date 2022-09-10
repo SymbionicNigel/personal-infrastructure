@@ -1,0 +1,2 @@
+"`n127.0.0.1    enki.localhost`n127.0.0.1    khazad-dum.localhost" | Out-File C:\Windows\System32\drivers\etc\hosts -encoding ASCII -append
+# TODO: Make this not require auth an authenticated powershell
