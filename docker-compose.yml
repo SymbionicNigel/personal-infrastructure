@@ -14,11 +14,6 @@ services:
     volumes:
       # So that Traefik can listen to the Docker events
       - /var/run/docker.sock:/var/run/docker.sock
-  whoami:
-    # A container that exposes an API to show its IP address
-    image: traefik/whoami
-    labels:
-      - "traefik.http.routers.whoami.rule=Host(`whoami.docker.localhost`)"
   vault: # https://hub.docker.com/_/vault
     image: vault:${VAULT_VERSION:-latest}
     restart: unless-stopped
@@ -46,17 +41,17 @@ services:
       GITLAB_OMNIBUS_CONFIG: | # TODO: Configure Gitlab https://docs.gitlab.com/ee/install/docker.html#pre-configure-docker-container
         external_url 'http://enki.$HOSTNAME_TLD'
         # Add any other gitlab.rb configuration here, each on its own line
-    ports:
-      - '81:80'
-      - '444:443'
-      - '22:22'
+    # ports:
+    #   - '81:80'
+    #   - '444:443'
+    #   - '22:22'
     volumes:
       - ${GITLAB_HOME:?err}/config:/etc/gitlab
       - ${GITLAB_HOME:?err}/logs:/var/log/gitlab
       - ${GITLAB_HOME:?err}/data:/var/opt/gitlab
     shm_size: '256m'
     labels:
-      traefik.enabled: True
-      traefik.http.routers.gitlab.rule: Host(enki.$HOSTNAME_TLD)
-      traefik.http.routers.gitlab.entrypoints: web
-      traefik.http.services.gitlab.loadbalancer.server.port: 81
+      # traefik.enabled: True
+      traefik.http.routers.gitlab.rule: Host(`enki.$HOSTNAME_TLD`)
+      traefik.http.routers.gitlab.entrypoints: http
+      traefik.http.services.gitlab.loadbalancer.server.port: 80
