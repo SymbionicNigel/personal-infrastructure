@@ -1,2 +1,15 @@
+# Examplt traefik.yml file
+# https://raw.githubusercontent.com/traefik/traefik/v2.8/traefik.sample.yml
+entryPoints:
+  web:
+    address: :80
+  websecure:
+    address: :443
+
 providers:
-  docker: {}
+  docker:
+    defaultRule: Host(`{{ normalize .Name }}.{{ env HOSTNAME_TLD }}`)
+    exposedByDefault: true
+
+api:
+  insecure: true
