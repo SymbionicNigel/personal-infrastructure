@@ -13,14 +13,14 @@ services:
       # The HTTP port
       - "80:80"
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock # So that Traefik can listen to the Docker events
-      - ./traefik.yml:/etc/traefik/traefik.yml
+      - /var/run/docker.sock:/var/run/docker.sock:ro # So that Traefik can listen to the Docker events
+      - ./traefik.yml:/etc/traefik/traefik.yml:ro
     labels:
       traefik.enable: True
       traefik.http.routers.hendrix: true
       # traefik.http.routers.hendrix.entrypoints: http # TODO: Do we need this? What does it do?
       traefik.http.services.hendrix.loadbalancer.server.port: 8080
-      traefik.http.routers.hendrix.rule: Host(`hendrix.localhost`)
+      traefik.http.routers.hendrix.rule: Host(`hendrix.${HOSTNAME_TLD:?err}`)
   # khazad-dum: # https://hub.docker.com/_/vault
   #   image: vault:${VAULT_VERSION:-latest}
   #   restart: unless-stopped
@@ -36,16 +36,16 @@ services:
   #     traefik.enable: True
   #     traefik.http.routers.khazad-dum.entrypoints: http
   #     traefik.http.services.khazad-dum.loadbalancer.server.port: 8500
-      # traefik.http.routers.khazad-dum.rule: Host(`.$HOSTNAME_TLD`)
+  #     # traefik.http.routers.khazad-dum.rule: Host(`.$HOSTNAME_TLD`)
   enki:
     image: 'gitlab/gitlab-ce:${GITLAB_VERSION:-latest}'
     restart: unless-stopped
     # TODO: Either configure correct values for enternal_url and hostname for prod or make them configurable 
-    hostname: 'enki.localhost' # 'gitlab.symbionic.tech' 
+    hostname: 'enki.${HOSTNAME_TLD:?err}' # 'gitlab.symbionic.tech' 
     environment:
-      HOSTNAME_TLD: localhost
+      HOSTNAME_TLD: ${HOSTNAME_TLD:?err}
       GITLAB_OMNIBUS_CONFIG: | # TODO: Configure Gitlab https://docs.gitlab.com/ee/install/docker.html#pre-configure-docker-container
-        external_url 'http://enki.localhost'
+        external_url 'http://enki.$HOSTNAME_TLD'
         # Add any other gitlab.rb configuration here, each on its own line
     volumes:
       - ${GITLAB_HOME:?err}/config:/etc/gitlab
@@ -54,5 +54,5 @@ services:
     shm_size: '256m'
     labels:
       traefik.enable: True
-      traefik.http.routers.enki.rule: Host(`enki.$HOSTNAME_TLD`)
+      traefik.http.routers.enki.rule: Host(`enki.${HOSTNAME_TLD:?err}`)
       traefik.http.services.enki.loadbalancer.server.port: 80

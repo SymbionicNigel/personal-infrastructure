@@ -8,7 +8,7 @@ entryPoints:
 
 providers:
   docker:
-    defaultRule: Host(`{{ normalize .Name }}.localhost`) # TODO: add configuration using HOSTNAME_TLD
+    # defaultRule: Host(`{{ normalize .Name }}.{{ env "$HOSTNAME_TLD" }}`) # TODO: add configuration using HOSTNAME_TLD
     exposedByDefault: true
 
 api:
