@@ -3,3 +3,10 @@
    - enki.localhost - gitlab
    - khazad-dum.localhost - vault  
 
+
+
+Required CLI packages:
+- Docker/Docker-compose
+- terraform
+- pnpm
+- node
