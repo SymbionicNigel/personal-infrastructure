@@ -11,6 +11,8 @@
     "baseUrl": "./",
     "paths": {
       "~/*": ["./src/*"]
-    }
+    },
+    "noEmit": true,
+    "isolatedModules": true,
   }
 }
