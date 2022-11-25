@@ -8,5 +8,6 @@ Required CLI packages:
 
 - Docker/Docker-compose
 - terraform
-- pnpm
+- [PNPM](https://pnpm.io/)
 - node
+- postgres
