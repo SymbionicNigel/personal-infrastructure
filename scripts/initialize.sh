@@ -1,5 +1,6 @@
-# Install nvm
-sudo dnf install curl  
-curl https://raw.githubusercontent.com/creationix/nvm/master/install.sh | bash
+sudo dnf install curl
+curl -fsSL https://get.pnpm.io/install.sh | sh -
 source ~/.bashrc
-# TODO: add automatic installation of nvm version https://github.com/nvm-sh/nvm # nvm install <version>
+pnpm env use --global 16  
+
+# TODO: install node packages for solid folder
