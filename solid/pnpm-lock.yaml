@@ -7,7 +7,9 @@ specifiers:
   '@suid/icons-material': ^0.5.1
   '@suid/material': ^0.8.0
   '@suid/vite-plugin': ^0.1.0
+  class-transformer: ^0.5.1
   prisma: ^4.5.0
+  reflect-metadata: ^0.1.13
   solid-js: ^1.6.0
   solid-start: ^0.2.0
   solid-start-node: ^0.2.0
@@ -21,7 +23,9 @@ dependencies:
   '@solidjs/router': 0.5.1_solid-js@1.6.2
   '@suid/icons-material': 0.5.1_solid-js@1.6.2
   '@suid/material': 0.8.0_solid-js@1.6.2
+  class-transformer: 0.5.1
   prisma: 4.6.1
+  reflect-metadata: 0.1.13
   solid-js: 1.6.2
   solid-start: 0.2.5_i2cnpwj3ojjdnkycik5yjsstli
   undici: 5.13.0
@@ -1663,6 +1667,10 @@ packages:
     optionalDependencies:
       fsevents: 2.3.2
 
+  /class-transformer/0.5.1:
+    resolution: {integrity: sha512-SQa1Ws6hUbfC98vKGxZH3KFY0Y1lm5Zm0SY8XX9zbK7FJCyVEac3ATW0RIpwzW+oOfmHE5PMPufDG9hCfoEOMw==}
+    dev: false
+
   /cliui/8.0.1:
     resolution: {integrity: sha512-BSeNnyus75C4//NQ9gQt1/csTXyo/8Sb+afLAkzAptFuMsod9HFokGNudZpi/oQV73hnVK+sR+5PVRMd+Dr7YQ==}
     engines: {node: '>=12'}
@@ -2577,6 +2585,10 @@ packages:
     engines: {node: '>=8.10.0'}
     dependencies:
       picomatch: 2.3.1
+
+  /reflect-metadata/0.1.13:
+    resolution: {integrity: sha512-Ts1Y/anZELhSsjMcU605fU9RE4Oi3p5ORujwbIKXfWa+0Zxs510Qrmrce5/Jowq3cHSZSJqBjypxmHarc+vEWg==}
+    dev: false
 
   /regenerate-unicode-properties/10.1.0:
     resolution: {integrity: sha512-d1VudCLoIGitcU/hEg2QqvyGZQmdC0Lf8BqdOMXGFSvJP4bNV1+XqbPQeHHLD51Jh4QJJ225dlIFvY4Ly6MXmQ==}

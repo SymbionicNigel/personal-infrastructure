@@ -5,7 +5,7 @@ import { getUser } from "./session";
 export const useUser = () =>
   createServerData$(async (_, { request }) => {
     const db = new PrismaClient();
-    const user = await getUser(db, request);
+    const user = await getUser(request);
 
     if (!user) {
       throw redirect("/login");

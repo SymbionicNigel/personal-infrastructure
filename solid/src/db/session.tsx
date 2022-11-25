@@ -1,20 +1,19 @@
-import { PrismaClient } from "@prisma/client";
+import prisma from './PrismaService';
 import { redirect } from "solid-start/server";
 import { createCookieSessionStorage } from "solid-start/session";
-import { db } from ".";
 type LoginForm = {
   username: string;
   password: string;
 };
 
 export async function register({ username, password }: LoginForm) {
-  return db.user.create({
+  return prisma.user.create({
     data: { username: username, password },
   });
 }
 
 export async function login({ username, password }: LoginForm) {
-  const user = await db.user.findUnique({ where: { username } });
+  const user = await prisma.user.findUnique({ where: { username } });
   if (!user) return null;
   const isCorrectPassword = password === user.password;
   if (!isCorrectPassword) return null;
@@ -61,14 +60,14 @@ export async function requireUserId(
   return userId;
 }
 
-export async function getUser(db: PrismaClient, request: Request) {
+export async function getUser(request: Request) {
   const userId = await getUserId(request);
   if (typeof userId !== "string") {
     return null;
   }
 
   try {
-    const user = await db.user.findUnique({ where: { id: userId } });
+    const user = await prisma.user.findUnique({ where: { id: userId } });
     return user;
   } catch {
     throw logout(request);

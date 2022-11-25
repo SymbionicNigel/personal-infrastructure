@@ -14,5 +14,6 @@
     },
     "noEmit": true,
     "isolatedModules": true,
+    "noImplicitAny": true,
   }
 }

@@ -18,7 +18,9 @@
     "@solidjs/router": "^0.5.0",
     "@suid/icons-material": "^0.5.1",
     "@suid/material": "^0.8.0",
+    "class-transformer": "^0.5.1",
     "prisma": "^4.5.0",
+    "reflect-metadata": "^0.1.13",
     "solid-js": "^1.6.0",
     "solid-start": "^0.2.0",
     "undici": "^5.11.0"
