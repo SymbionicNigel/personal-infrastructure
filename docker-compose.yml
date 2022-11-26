@@ -36,6 +36,21 @@ services:
       traefik.enable: True
       traefik.http.services.khazad-dum.loadbalancer.server.port: 8500
       traefik.http.routers.khazad-dum.rule: Host(`khazad-dum.$HOSTNAME_TLD`)
+  postgres: # TODO: rename postgresql container
+    image: postgres:14.3
+    ports:
+      - 5432:5432
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=randompassword
+      - POSTGRES_DB=Xcite
+    volumes:
+      - ./pgdata:/var/lib/postgresql/data
+    labels: # TODO: figure out what we are doing here since this is not serving to 80
+      traefik.enable: True
+      # traefik.http.services.khazad-dum.loadbalancer.server.port: 8500
+      # traefik.http.routers.khazad-dum.rule: Host(`khazad-dum.$HOSTNAME_TLD`)
+  
   enki:
     image: 'gitlab/gitlab-ce:${GITLAB_VERSION:-latest}'
     restart: unless-stopped
