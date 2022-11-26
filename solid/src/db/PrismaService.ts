@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client'
+import { PrismaClient } from '@prisma/client';
 
 // add prisma to the NodeJS global type
 interface CustomNodeJsGlobal {
@@ -6,10 +6,10 @@ interface CustomNodeJsGlobal {
 }
 
 // Prevent multiple instances of Prisma Client in development
-declare const global: CustomNodeJsGlobal
+declare const global: CustomNodeJsGlobal;
 
-const prisma: PrismaClient = global.prisma || new PrismaClient()
+const prisma: PrismaClient = global.prisma || new PrismaClient();
 
-if (import.meta.env.NODE_ENV === 'development') global.prisma = prisma
+if (import.meta.env.NODE_ENV === 'development') global.prisma = prisma;
 
-export default prisma
+export default prisma;

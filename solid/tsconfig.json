@@ -15,5 +15,7 @@
     "noEmit": true,
     "isolatedModules": true,
     "noImplicitAny": true,
+    "experimentalDecorators": true,
+    "strict": true,
   }
 }
