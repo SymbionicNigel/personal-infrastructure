@@ -31,5 +31,9 @@ By default, `npm run build` will generate a Node app that you can run with `npm 
 
 ## Packages/Frameworks in use
 
+- [SolidJS](https://www.solidjs.com/docs/latest/api)
+- [Solid Start](https://start.solidjs.com/getting-started/what-is-solidstart)
 - [Prisma](https://www.prisma.io/)
 - [SUID (Solid port of MaterialUI)](https://suid.io/)
+
+> Keep an eye out on this repo for potentially useful packages <https://github.com/one-aalam/awesome-solid-js>
