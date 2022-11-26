@@ -3,3 +3,4 @@ _vault
 
 # Folder used for gitlab home instead of /srv/gitlab on Windows
 _srv
+pgdata
