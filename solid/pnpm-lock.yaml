@@ -6,6 +6,7 @@ specifiers:
   '@solidjs/router': ^0.5.0
   '@suid/icons-material': ^0.5.1
   '@suid/material': ^0.8.0
+  '@suid/types': ^0.3.0
   '@suid/vite-plugin': ^0.1.0
   '@typescript-eslint/eslint-plugin': ^5.44.0
   '@typescript-eslint/parser': ^5.44.0
@@ -37,6 +38,7 @@ dependencies:
   undici: 5.13.0
 
 devDependencies:
+  '@suid/types': 0.3.0_solid-js@1.6.2
   '@suid/vite-plugin': 0.1.0_vite@3.2.4
   '@typescript-eslint/eslint-plugin': 5.44.0_fnsv2sbzcckq65bwfk7a5xwslu
   '@typescript-eslint/parser': 5.44.0_hsf322ms6xhhd4b5ne6lb74y4a
@@ -1455,7 +1457,6 @@ packages:
       solid-js: ^1.6.2
     dependencies:
       solid-js: 1.6.2
-    dev: false
 
   /@suid/utils/0.6.0_solid-js@1.6.2:
     resolution: {integrity: sha512-1s5mRYbYCFzzo/t1tCvP72IizDNMjAIsV7SsBHqAQRayfQIlAaQv9D2HAQ0QW2WxHIQTsi4JLPZI/0MdiU12Vw==}

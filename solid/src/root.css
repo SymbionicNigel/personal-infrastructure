@@ -1,14 +1,14 @@
 body {
   font-family: Gordita, Roboto, Oxygen, Ubuntu, Cantarell,
   'Open Sans', 'Helvetica Neue', sans-serif;
+  margin: 0;
 }
 
 main {
-  width: 25%;
-  margin: 0 auto;
+  /* margin: 0 auto; */
   border-radius: 1rem;
   background: #f3f4f6;
-  padding: 1rem;
+  /* padding: 1rem; */
 }
 
 h1 {
@@ -44,7 +44,6 @@ fieldset {
 div {
   display: flex;
   align-items: center;
-  margin-bottom: 0.5rem;
 }
 
 button {
