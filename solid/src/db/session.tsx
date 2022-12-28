@@ -29,8 +29,8 @@ const storage = createCookieSessionStorage({
 		// secure doesn't work on localhost for Safari
 		// https://web.dev/when-to-use-local-https/
 		secure: true,
-		secrets: ['hello'],
-		sameSite: 'lax',
+		secrets: ['hello'], // TODO: generate secret value and store in vault
+		sameSite: 'strict',
 		path: '/',
 		maxAge: 60 * 60 * 24 * 30,
 		httpOnly: true,
@@ -61,23 +61,24 @@ export async function requireUserId(
 	return userId;
 }
 
-export async function getUser(request: Request) {
-	const userId = await getUserId(request);
-	if (typeof userId !== 'string') {
-		return null;
-	}
+export async function getUser(_request: Request) {
+	return null; // Until we implement logins
+	// const userId = await getUserId(request);
+	// if (typeof userId !== 'string') {
+	// 	return null;
+	// }
 
-	try {
-		const user = await prisma.user.findUnique({ where: { id: userId } });
-		return user;
-	} catch {
-		throw logout(request);
-	}
+	// try {
+	// 	const user = await prisma.user.findUnique({ where: { id: userId } });
+	// 	return user;
+	// } catch {
+	// 	throw logout(request);
+	// }
 }
 
 export async function logout(request: Request) {
 	const session = await storage.getSession(request.headers.get('Cookie'));
-	return redirect('/login', {
+	return redirect('/', {
 		headers: {
 			'Set-Cookie': await storage.destroySession(session),
 		},

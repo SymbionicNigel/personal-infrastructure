@@ -1,9 +1,9 @@
 import { createServerData$, redirect } from 'solid-start/server';
-import { getUser } from './session';
+import { getUser, logout } from './session';
 
 export const useUser = () =>
 	createServerData$(async (_, { request }) => {
-		const user = await getUser(request);    
-		if (!user) throw redirect('/login');
+		const user = await getUser(request);
+		if (request.url.startsWith('/login') || user) throw logout(request);
 		return user;
 	});

@@ -90,7 +90,7 @@ export default function Login() {
 		}
 		}
 	});
-
+	// TODO: Need to fix UI and rethink login process/use of cookies
 	return (
 		<main>
 			<h1>Login</h1>
