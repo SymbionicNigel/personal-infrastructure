@@ -41,11 +41,6 @@ fieldset {
   justify-content: space-around;
 }
 
-div {
-  display: flex;
-  align-items: center;
-}
-
 button {
   background: #d1d5db;
   border: none;
