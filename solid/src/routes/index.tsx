@@ -1,5 +1,7 @@
+import { Outlet } from 'solid-start';
 import HeaderBar from '~/components/headerBar';
-import { useUser } from '../db/useUser';
+import SideMenu from '~/components/sideMenu';
+import { useUser } from '~/db/useUser';
 
 export function routeData() {
 	return useUser();
@@ -12,6 +14,6 @@ export default function Home() {
 	// );
 
 	return (
-		<main><HeaderBar/></main>
+		<main />
 	);
 }

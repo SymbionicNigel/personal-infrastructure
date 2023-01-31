@@ -104,7 +104,7 @@ export default function Login() {
 					<legend>Login or Register?</legend>
 					<label>
 						<input type="radio" name="loginType" value="login" checked={true} />{' '}
-            Login
+						Login
 					</label>
 					<label>
 						<input type="radio" name="loginType" value="register" /> Register

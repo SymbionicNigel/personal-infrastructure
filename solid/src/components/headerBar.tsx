@@ -1,5 +1,4 @@
 import AppBar from '@suid/material/AppBar';
-import IconButton from '@suid/material/IconButton';
 import Stack from '@suid/material/Stack';
 import MenuIcon from '@suid/icons-material/Menu';
 import Typography from '@suid/material/Typography';
@@ -14,22 +13,22 @@ export default function HeaderBar() {
 				alignItems="center"
 				spacing={4}
 			>
-				<IconButton
+				<Button
 					color='inherit'
-					aria-label="menu"
+					aria-label='menu'
 					sx={{width: '2.5rem'}}
-				>
-					<MenuIcon/>
-				</IconButton>
-				<Typography variant="h6" component="div">
-						Symbionic 
+					startIcon=<MenuIcon/>
+					href='/resume' />
+				<Typography variant="h5" component="div">
+					Symbionic
 				</Typography>
 				<Button
 					sx={{ width: 'auto' }}
 					type='button'
 					size='small'
-					color="inherit">
-						Login
+					color="inherit"
+				>
+					Login
 				</Button>
 			</Stack>
 		</AppBar>

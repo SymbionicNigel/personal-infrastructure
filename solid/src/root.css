@@ -42,12 +42,16 @@ fieldset {
 }
 
 button {
-  background: #d1d5db;
-  border: none;
+  color: inherit;
   border-radius: 0.3rem;
   padding: 0.2rem;
+  border: none;
   font-size: 1rem;
-  width: 100%;
+  width: auto;
+  /* background: #d1d5db; */
 }
 
+button[startIcon] {
+
+}
 

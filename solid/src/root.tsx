@@ -12,6 +12,8 @@ import {
 	Scripts,
 	Title,
 } from 'solid-start';
+import HeaderBar from './components/headerBar';
+import SideMenu from './components/sideMenu';
 import './root.css';
 
 export default function Root() {
@@ -31,6 +33,8 @@ export default function Root() {
 				<noscript>You need to enable JavaScript to run this app.</noscript>
 				<ErrorBoundary>
 					<Suspense fallback={<div>Loading</div>}>
+						<HeaderBar/>
+						<SideMenu/>
 						<Routes>
 							<FileRoutes />
 						</Routes>
