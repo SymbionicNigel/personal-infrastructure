@@ -69,3 +69,5 @@ services:
       traefik.enable: True
       traefik.http.routers.enki.rule: Host(`enki.${HOSTNAME_TLD:?err}`)
       traefik.http.services.enki.loadbalancer.server.port: 80
+  # astarte:  JS website
+  #   image
