@@ -25,6 +25,10 @@ export default function Root() {
 				<Meta name="viewport" content="width=device-width, initial-scale=1" />
 				<Meta name="theme-color" content="#000000"/>
 				<Link
+					href="/fonts/MantanaItalic.otf" rel="stylesheet"/>
+				<Link
+					href="/fonts/MantanaRegular.otf" rel="stylesheet"/>
+				<Link
 					href="https://fonts.googleapis.com/css?family=Roboto:300,400,500"
 					rel="stylesheet"
 				/>
