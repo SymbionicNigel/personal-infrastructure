@@ -1,6 +1,3 @@
-import { Outlet } from 'solid-start';
-import HeaderBar from '~/components/headerBar';
-import SideMenu from '~/components/sideMenu';
 import { useUser } from '~/db/useUser';
 
 export function routeData() {

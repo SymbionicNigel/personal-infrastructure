@@ -1,9 +1,9 @@
 import { createTheme } from '@suid/material';
 
 // Found on https://looka.com/blog/vintage-color-palettes/ all of #5 with brown from 11
-export const mantana60s = createTheme({
+export const mantanaRegular60s = createTheme({
 	typography: {
-		fontFamily: 'mantana-regular'
+		fontFamily: 'Mantana-regular',
 	},
 	palette: {
 		primary: {

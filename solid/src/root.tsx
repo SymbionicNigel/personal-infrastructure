@@ -1,4 +1,5 @@
 // @refresh reload
+import { ThemeProvider } from '@suid/material';
 import { Suspense } from 'solid-js';
 import {
 	Body,
@@ -12,9 +13,11 @@ import {
 	Scripts,
 	Title,
 } from 'solid-start';
+import { Router } from '@solidjs/router';
 import HeaderBar from './components/headerBar';
 import SideMenu from './components/sideMenu';
 import './root.css';
+import { mantanaRegular60s } from './themes';
 
 export default function Root() {
 	return (
@@ -25,23 +28,33 @@ export default function Root() {
 				<Meta name="viewport" content="width=device-width, initial-scale=1" />
 				<Meta name="theme-color" content="#000000"/>
 				<Link
-					href="/fonts/MantanaItalic.otf" rel="stylesheet"/>
+					href="/fonts/MantanaItalic.otf"
+					rel="preload"
+					type='font/otf'
+					as='font'/>
 				<Link
-					href="/fonts/MantanaRegular.otf" rel="stylesheet"/>
+					href="/fonts/MantanaRegular.otf"
+					rel="preload"
+					type='font/otf'
+					as='font'/>
 				<Link
 					href="https://fonts.googleapis.com/css?family=Roboto:300,400,500"
 					rel="stylesheet"
 				/>
 			</Head>
-			<Body>
+			<Body >
 				<noscript>You need to enable JavaScript to run this app.</noscript>
 				<ErrorBoundary>
 					<Suspense fallback={<div>Loading</div>}>
-						<HeaderBar/>
-						<SideMenu/>
-						<Routes>
-							<FileRoutes />
-						</Routes>
+						<ThemeProvider theme={mantanaRegular60s}>
+							<Router>
+								<HeaderBar/>
+								<SideMenu/>
+								<Routes>
+									<FileRoutes />
+								</Routes>
+							</Router>
+						</ThemeProvider>
 					</Suspense>
 				</ErrorBoundary>
 				<Scripts />

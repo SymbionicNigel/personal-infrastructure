@@ -3,8 +3,10 @@ import Stack from '@suid/material/Stack';
 import MenuIcon from '@suid/icons-material/Menu';
 import Typography from '@suid/material/Typography';
 import Button from '@suid/material/Button';
+import { useNavigate } from 'solid-start';
 
 export default function HeaderBar() {
+	const navigate = useNavigate();
 	return (
 		<AppBar position='static'>
 			<Stack
@@ -18,7 +20,7 @@ export default function HeaderBar() {
 					aria-label='menu'
 					sx={{width: '2.5rem'}}
 					startIcon=<MenuIcon/>
-					href='/resume' />
+					onclick={() => navigate('/resume')} />
 				<Typography variant="h5" component="div">
 					Symbionic
 				</Typography>

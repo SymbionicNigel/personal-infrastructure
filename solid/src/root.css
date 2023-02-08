@@ -1,5 +1,16 @@
+@font-face {
+  font-family: 'Mantana-regular';
+  src: url("/fonts/mantana-font/MantanaRegular.otf") format('opentype');
+}
+
+@font-face {
+  font-family: 'Mantana-italic';
+  font-style: italic;
+  src: url("/fonts/mantana-font/MantanaItalic.otf") format('opentype');
+}
+
 body {
-  font-family: Gordita, Roboto, Oxygen, Ubuntu, Cantarell,
+  font-family: 'Mantana-regular', 'Mantana-italic', Gordita, Roboto, Oxygen, Ubuntu, Cantarell,
   'Open Sans', 'Helvetica Neue', sans-serif;
   margin: 0;
 }
@@ -50,8 +61,3 @@ button {
   width: auto;
   /* background: #d1d5db; */
 }
-
-button[startIcon] {
-
-}
-
