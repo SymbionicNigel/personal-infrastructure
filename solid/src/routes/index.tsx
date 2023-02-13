@@ -10,7 +10,5 @@ export default function Home() {
 	// 	logout(request)
 	// );
 
-	return (
-		<main />
-	);
+	return <main>Home</main>;
 }

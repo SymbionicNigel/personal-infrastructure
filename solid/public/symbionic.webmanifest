@@ -1,0 +1,16 @@
+{
+    "name": "Symbionic Technologies",
+    "short_name": "Symbionic",
+    "description": "A Progressive webapp for testing, learning, and eventually personal use",
+    "icons": [
+        {
+            "src": "favicon.ico",
+            "sizes": "16x16",
+            "type": "image/x-icon"
+        }
+    ],
+    "start_url": "/", // Need to use this properly
+    "display": "fullscreen",
+    "theme_color": "#669fb2",
+    "background_color": "#ae9068"
+}
