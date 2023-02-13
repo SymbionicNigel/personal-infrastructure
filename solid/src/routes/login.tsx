@@ -41,9 +41,9 @@ export default function Login() {
 		const redirectTo = form.get('redirectTo') || '/';
 		if (
 			typeof loginType !== 'string' ||
-      typeof username !== 'string' ||
-      typeof password !== 'string' ||
-      typeof redirectTo !== 'string'
+			typeof username !== 'string' ||
+			typeof password !== 'string' ||
+			typeof redirectTo !== 'string'
 		) {
 			throw new FormError('Form not submitted correctly.');
 		}
@@ -58,78 +58,80 @@ export default function Login() {
 		}
 
 		switch (loginType) {
-		case 'login': {
-			const user = await login({ username, password });
-			if (!user) {
-				throw new FormError('Username/Password combination is incorrect', {
-					fields,
-				});
-			}
-			return createUserSession(`${user.id}`, redirectTo);
-		}
-		case 'register': {
-			const userExists = await prisma.user.findUnique({ where: { username } });
-			if (userExists) {
-				throw new FormError(`User with username ${username} already exists`, {
-					fields,
-				});
-			}
-			const user = await register({ username, password });
-			if (!user) {
-				throw new FormError(
-					'Something went wrong trying to create a new user.',
-					{
+			case 'login': {
+				const user = await login({ username, password });
+				if (!user) {
+					throw new FormError('Username/Password combination is incorrect', {
 						fields,
-					}
-				);
+					});
+				}
+				return createUserSession(`${user.id}`, redirectTo);
 			}
-			return createUserSession(`${user.id}`, redirectTo);
-		}
-		default: {
-			throw new FormError('Login type invalid', { fields });
-		}
+			case 'register': {
+				const userExists = await prisma.user.findUnique({
+					where: { username },
+				});
+				if (userExists) {
+					throw new FormError(`User with username ${username} already exists`, {
+						fields,
+					});
+				}
+				const user = await register({ username, password });
+				if (!user) {
+					throw new FormError(
+						'Something went wrong trying to create a new user.',
+						{
+							fields,
+						}
+					);
+				}
+				return createUserSession(`${user.id}`, redirectTo);
+			}
+			default: {
+				throw new FormError('Login type invalid', { fields });
+			}
 		}
 	});
 	// TODO: Need to fix UI and rethink login process/use of cookies
 	return (
-		<main>
+		<main sx={{ outerWidth: '25rem' }}>
 			<h1>Login</h1>
 			<Form>
 				<input
-					type="hidden"
-					name="redirectTo"
+					type='hidden'
+					name='redirectTo'
 					value={params.redirectTo ?? '/'}
 				/>
 				<fieldset>
 					<legend>Login or Register?</legend>
 					<label>
-						<input type="radio" name="loginType" value="login" checked={true} />{' '}
+						<input type='radio' name='loginType' value='login' checked={true} />{' '}
 						Login
 					</label>
 					<label>
-						<input type="radio" name="loginType" value="register" /> Register
+						<input type='radio' name='loginType' value='register' /> Register
 					</label>
 				</fieldset>
 				<div>
-					<label for="username-input">Username</label>
-					<input name="username" placeholder="kody" />
+					<label for='username-input'>Username</label>
+					<input name='username' placeholder='kody' />
 				</div>
 				<Show when={loggingIn.error?.fieldErrors?.username}>
-					<p role="alert">{loggingIn.error.fieldErrors.username}</p>
+					<p role='alert'>{loggingIn.error.fieldErrors.username}</p>
 				</Show>
 				<div>
-					<label for="password-input">Password</label>
-					<input name="password" type="password" placeholder="twixrox" />
+					<label for='password-input'>Password</label>
+					<input name='password' type='password' placeholder='twixrox' />
 				</div>
 				<Show when={loggingIn.error?.fieldErrors?.password}>
-					<p role="alert">{loggingIn.error.fieldErrors.password}</p>
+					<p role='alert'>{loggingIn.error.fieldErrors.password}</p>
 				</Show>
 				<Show when={loggingIn.error}>
-					<p role="alert" id="error-message">
+					<p role='alert' id='error-message'>
 						{loggingIn.error.message}
 					</p>
 				</Show>
-				<button type="submit">{data() ? 'Login' : ''}</button>
+				<button type='submit'>{data() ? 'Login' : ''}</button>
 			</Form>
 		</main>
 	);

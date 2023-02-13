@@ -13,43 +13,24 @@ body {
   font-family: 'Mantana-regular', 'Mantana-italic', Gordita, Roboto, Oxygen, Ubuntu, Cantarell,
   'Open Sans', 'Helvetica Neue', sans-serif;
   margin: 0;
+  height: calc(100vh + 13rem );
+}
+
+html {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+  /* background: #f3f4f6; */
+}
+html::-webkit-scrollbar {
+  display: none;
 }
 
 main {
-  /* margin: 0 auto; */
-  border-radius: 1rem;
-  background: #f3f4f6;
-  /* padding: 1rem; */
-}
-
-h1 {
-  margin: 0;
-}
-
-p {
-  margin: 0 0 0.3rem 0;
-  color: #f87171;
-  flex-basis: 100%;
-}
-
-input {
-  margin: 0 0 0 0.4rem;
-  border: 2px solid #000;
-  border-radius: 0.4rem;
-  padding: 0.3rem;
-  flex: 1;
-}
-
-form {
-  display: flex;
-  flex-direction: column;
-}
-
-fieldset {
-  border: none;
-  padding: 1rem 0;
-  display: flex;
-  justify-content: space-around;
+  position: fixed;
+  width: 100vw;
+  bottom: 0;
+  height: calc(100vh - 9rem);
+  margin-top: 8rem;
 }
 
 button {
