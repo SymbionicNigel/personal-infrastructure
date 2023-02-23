@@ -1,5 +1,5 @@
 // @refresh reload
-import { ThemeProvider } from '@suid/material';
+import { CssBaseline, ThemeProvider } from '@suid/material';
 import { Suspense } from 'solid-js';
 import {
 	Body,
@@ -51,12 +51,15 @@ export default function Root() {
 				<ErrorBoundary>
 					<Suspense fallback={<div>Loading</div>}>
 						<ThemeProvider theme={mantanaRegular60s}>
+							<CssBaseline />
 							<Router>
 								<HeaderBar />
 								<SideMenu />
-								<Routes>
-									<FileRoutes />
-								</Routes>
+								<main>
+									<Routes>
+										<FileRoutes />
+									</Routes>
+								</main>
 							</Router>
 						</ThemeProvider>
 					</Suspense>

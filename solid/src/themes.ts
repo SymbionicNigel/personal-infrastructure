@@ -6,16 +6,29 @@ export const mantanaRegular60s = createTheme({
 		fontFamily: 'Mantana-regular',
 	},
 	palette: {
+		mode: 'dark',
 		primary: {
 			main: '#669fb2',
-			light: '#e8b877',
-			dark: '#dd802c',
 		},
 		secondary: {
-			main: '#ae9068',
-			light: '#dadfe1',
-			dark: '#3e2a20',
+			main: '#87aa7e',
 		},
-		mode: 'light',
+		background: {
+			default: '#271e16',
+			paper: '#31281d',
+		},
+		warning: {
+			main: '#edbf02',
+		},
+		error: {
+			main: '#e06c21',
+		},
+		info: {
+			main: '#0288d1',
+		},
+		divider: '#2f201b',
+		success: {
+			main: '#005427',
+		},
 	},
 });

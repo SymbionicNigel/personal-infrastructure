@@ -4,7 +4,7 @@ import MenuIcon from '@suid/icons-material/Menu';
 import Typography from '@suid/material/Typography';
 import Button from '@suid/material/Button';
 import { useNavigate } from 'solid-start';
-import { Breadcrumbs, Link } from '@suid/material';
+import { Breadcrumbs, Link, useTheme } from '@suid/material';
 import { useWindowScrollPosition } from '@solid-primitives/scroll';
 import { createEffect, createSignal } from 'solid-js';
 
@@ -12,10 +12,10 @@ export default function HeaderBar() {
 	const navigate = useNavigate();
 	const scroll = useWindowScrollPosition();
 	const [headerVariant, setHeaderVariant] = createSignal<1 | 2 | 3 | 4>(1);
-
+	const theme = useTheme();
 	createEffect(() => {
 		const REM = 16;
-		let headerSize = headerVariant(); //Math.ceil(scroll.y / 55);
+		let headerSize = headerVariant();
 		if (scroll.y >= 4 * REM) headerSize = 4;
 		else if (4 * REM > scroll.y && scroll.y >= 3 * REM) headerSize = 3;
 		else if (3 * REM > scroll.y && scroll.y >= REM * 0.5) headerSize = 2;
@@ -27,7 +27,11 @@ export default function HeaderBar() {
 		<AppBar
 			class='header'
 			position='sticky'
-			sx={{ top: '-4rem;', height: '9rem;' }}
+			sx={{
+				top: '-4rem;',
+				height: '9rem;',
+				backgroundColor: theme.palette.primary.main,
+			}}
 		>
 			<Stack
 				textTransform='capitalize'
@@ -57,7 +61,7 @@ export default function HeaderBar() {
 						variant={`h${headerVariant()}`}
 						component={`h${headerVariant()}`}
 					>
-						Symbionic
+						Symbionic.Tech
 					</Typography>
 					<Button
 						sx={{ width: 'auto' }}
@@ -74,7 +78,13 @@ export default function HeaderBar() {
 					aria-label='breadcrumb'
 					sx={{ height: 'fit-content' }}
 				>
-					<Link underline='hover' href='/#' variant='h6' color='secondary'>
+					<Link
+						underline='hover'
+						href='/#'
+						variant='h6'
+						onclick={() => navigate('/#')}
+						color='Background'
+					>
 						Home
 					</Link>
 				</Breadcrumbs>
