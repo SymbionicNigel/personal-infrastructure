@@ -5,10 +5,11 @@ import FullscreenExit from '@suid/icons-material/FullscreenExit';
 import Typography from '@suid/material/Typography';
 import Button from '@suid/material/Button';
 import { useNavigate } from 'solid-start';
-import { Breadcrumbs, Link, useTheme } from '@suid/material';
+import { useTheme } from '@suid/material';
 import { useWindowScrollPosition } from '@solid-primitives/scroll';
 import { createEffect, createSignal } from 'solid-js';
 import { createFullscreen } from '@solid-primitives/fullscreen';
+import HeaderCrumbs from './breadCrumbs';
 
 export default function HeaderBar() {
 	const navigate = useNavigate();
@@ -80,21 +81,7 @@ export default function HeaderBar() {
 						Login
 					</Button>
 				</Stack>
-				<Breadcrumbs
-					maxItems={4}
-					aria-label='breadcrumb'
-					sx={{ height: 'fit-content' }}
-				>
-					<Link
-						underline='hover'
-						href='/#'
-						variant='h6'
-						onclick={() => navigate('/#')}
-						color='Background'
-					>
-						Home
-					</Link>
-				</Breadcrumbs>
+				<HeaderCrumbs />
 			</Stack>
 		</AppBar>
 	);
