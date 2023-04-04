@@ -56,9 +56,11 @@ export default function Root() {
 								<HeaderBar />
 								<SideMenu />
 								<main>
-									<Routes>
-										<FileRoutes />
-									</Routes>
+									<div class='main-content'>
+										<Routes>
+											<FileRoutes />
+										</Routes>
+									</div>
 								</main>
 							</Router>
 						</ThemeProvider>

@@ -13,24 +13,33 @@ body {
   font-family: 'Mantana-regular', 'Mantana-italic', Gordita, Roboto, Oxygen, Ubuntu, Cantarell,
   'Open Sans', 'Helvetica Neue', sans-serif;
   margin: 0;
+  padding: 0;
   height: calc(100vh + 13rem );
 }
 
 html {
   -ms-overflow-style: none;
   scrollbar-width: none;
-  /* background: #f3f4f6; */
 }
+
 html::-webkit-scrollbar {
   display: none;
 }
 
 main {
   position: fixed;
-  width: 100vw;
+  width: 75vw;
   bottom: 0;
-  height: 100vh;
-  margin-top: 8rem;
+  height: calc(100% - 9rem);
+  overflow-y: auto;
+}
+
+.main-content {
+  position: relative;
+}
+
+main::-webkit-scrollbar {
+  display: initial;
 }
 
 button {
