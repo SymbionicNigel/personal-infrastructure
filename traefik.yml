@@ -1,15 +1,29 @@
 # Examplt traefik.yml file
 # https://raw.githubusercontent.com/traefik/traefik/v2.8/traefik.sample.yml
+
+
 entryPoints:
   web:
     address: :80
-  # websecure:
-  #   address: :443
+    redirect: "websecure"
+  websecure:
+    address: :443
 
 providers:
   docker:
-    # defaultRule: Host(`{{ normalize .Name }}.{{ env "$HOSTNAME_TLD" }}`) # TODO: add configuration using HOSTNAME_TLD
+    defaultRule: Host(`{{ normalize .Name }}.{{ env "$HOSTNAME_TLD" }}`) # TODO: add configuration using HOSTNAME_TLD
     exposedByDefault: true
+
+certificatesResolvers:
+  letsEcrypt:
+    acme:
+      email: 'nphilmont2010@gmail.com'
+      dnsChallenge:
+        provider: 'linode'
+        # TODO: need to add linode token to get this to work
+        
+      
+      # storage: 
 
 api:
   insecure: true

@@ -1,13 +1,21 @@
 import { IconButton, Link, Stack, useTheme } from '@suid/material';
 import Fab from '@suid/material/Fab';
-import { Close, ReceiptLong, Widgets } from '@suid/icons-material';
+import {
+	Close,
+	ReceiptLong,
+	Widgets,
+	BungalowOutlined,
+	PsychologyOutlined,
+	BookOutlined,
+	ConnectWithoutContactOutlined,
+} from '@suid/icons-material';
 import { createSignal, Show } from 'solid-js';
 import { useLocation, useNavigate } from 'solid-start';
 
 export default function SideMenu() {
 	const navigate = useNavigate();
 	const location = useLocation();
-	const [expanded, setExpanded] = createSignal(false);
+	const [expanded, setExpanded] = createSignal(true);
 	const theme = useTheme();
 
 	const clickExpanded = () => {
@@ -17,7 +25,7 @@ export default function SideMenu() {
 	const handleMenuClick = (destination: string) => {
 		if (destination !== location.pathname) {
 			navigate(destination);
-			clickExpanded();
+			// clickExpanded();
 		}
 	};
 
@@ -42,11 +50,51 @@ export default function SideMenu() {
 					underline='hover'
 					variant='h3'
 					color={theme.palette.secondary.dark}
-					onClick={() => handleMenuClick('/resume')}
+					onClick={() => handleMenuClick('/#')}
+				>
+					<BungalowOutlined fontSize='large' />
+					Home
+					<Show when={location.pathname === '/'}>&middot</Show>
+				</Link>
+				<Link
+					underline='hover'
+					variant='h3'
+					color={theme.palette.secondary.dark}
+					onClick={() => handleMenuClick('/nigel#')}
+				>
+					<PsychologyOutlined fontSize='large' />
+					Nigel
+					<Show when={location.pathname === '/nigel'}>&middot</Show>
+				</Link>
+				<Link
+					underline='hover'
+					variant='h3'
+					color={theme.palette.secondary.dark}
+					onClick={() => handleMenuClick('/resume#')}
 				>
 					<ReceiptLong fontSize='large' />
 					Résumé
 					<Show when={location.pathname === '/resume'}>&middot</Show>
+				</Link>
+				<Link
+					underline='hover'
+					variant='h3'
+					color={theme.palette.secondary.dark}
+					onClick={() => handleMenuClick('/portfolio#')}
+				>
+					<BookOutlined fontSize='large' />
+					Portfolio
+					<Show when={location.pathname === '/portfolio'}>&middot</Show>
+				</Link>
+				<Link
+					underline='hover'
+					variant='h3'
+					color={theme.palette.secondary.dark}
+					onClick={() => handleMenuClick('/contact#')}
+				>
+					<ConnectWithoutContactOutlined fontSize='large' />
+					Connect
+					<Show when={location.pathname === '/contact'}>&middot</Show>
 				</Link>
 				<IconButton
 					sx={{ width: 'fit-content' }}
