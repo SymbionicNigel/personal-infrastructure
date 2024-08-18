@@ -3,7 +3,7 @@
         "https://json.schemastore.org/eslintrc.json": "file:///home/nigel/personal-infrastructure/solid/.eslintrc.yml"
     },
     "editor.codeActionsOnSave": {
-        "source.fixAll": true
+        "source.fixAll": "explicit"
     },
     "eslint.enable": true,
 }
