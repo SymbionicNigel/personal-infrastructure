@@ -1,0 +1,18 @@
+# yaml-language-server: $schema=https://json.schemastore.org/traefik-v2-file-provider.json
+
+# http:
+#   routers:
+#     httpx:
+#       rule: Host(`hendrix.{{ env "HOSTNAME_TLD" }}`)
+#       service: 'hendrix@docker'
+  # services:
+  #   baseService:
+      
+      
+      # loadBalancer:
+      #   servers:
+      #     - url: 'http://*.{{ env "HOSTNAME_TLD" }}'
+
+
+
+      

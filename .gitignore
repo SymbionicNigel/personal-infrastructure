@@ -1,5 +1,7 @@
 .env
 _vault
+*.key
+*.crt
 
 # Folder used for gitlab home instead of /srv/gitlab on Windows
 _srv

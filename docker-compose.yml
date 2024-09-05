@@ -1,4 +1,3 @@
-version: '3.7'
 services:
   # template:
   #   container_name: template # This becomes the subdomain used by traefik
@@ -8,33 +7,40 @@ services:
   #     traefik.enable: true
   hendrix:
     container_name: hendrix
+    environment:
+      HOSTNAME_TLD: '${HOSTNAME_TLD:?err}'
+      HTTPS_EMAIL: '${HTTPS_EMAIL:?err}'
+      LINODE_TOKEN: '${TLS_LINODE_TOKEN:?err}'
+    # restart: unless-stopped
     image: traefik:${TRAEFIK_VERSION:-v3.1}
-    restart: unless-stopped
-    ports:
-      # The HTTP port
-      - "80:80"
-      - "8080:8080"
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro # So that Traefik can listen to the Docker events
-      - ./traefik.yml:/etc/traefik/traefik.yml:ro
     labels:
       traefik.enable: True
-      # traefik.http.routers.hendrix: true
-      # traefik.http.routers.hendrix.entrypoints: http # TODO: Do we need this? What does it do?
-      # traefik.http.services.hendrix.loadbalancer.server.port: 8080
+    ports:
+      - '80:80'
+      - '443:443'
+      - '8080:8080'
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro # So that Traefik can listen to the Docker events
+      - ./traefik/traefik.yml:/etc/traefik/traefik.yml:ro # Static config
+      - ./traefik/dynamic.yml:/etc/traefik/dynamic.yml:ro # Dynamic config
+      - ./letsencrypt:/letencrypt:rw
+      - ./test_certs:/certs
 
-    environment:
-      HOSTNAME_TLD: "${HOSTNAME_TLD:?err}"
   whoami:
     container_name: whoami
     image: traefik/whoami
     labels:
+      # entrypoints.websecure.http.tls.certificates[0].certFile: /certs/traefik-selfsigned.crt
+      # entrypoints.websecure.http.tls.certificates[0].keyFile: /certs/traefik-selfsigned.key
       traefik.enable: True
-      # traefik.http.routers.testcont.rule: Host(`whoami.${HOSTNAME_TLD:?err}`)
+      # traefik.http.routers.whoami.certResolver: httpsResolver
+      # traefik.http.routers.whoami.port: 80
+      # traefik.http.routers.whoami.tls: True
+
   # khazad-dum: # https://hub.docker.com/_/vault
   #   image: vault:${VAULT_VERSION:-latest}
   #   restart: unless-stopped
-  #   cap_add: 
+  #   cap_add:
   #     - IPC_LOCK
   #   volumes:
   #     - './_vault/logs:/vault/logs'
@@ -59,23 +65,24 @@ services:
   #     traefik.enable: True
   #     # traefik.http.services.khazad-dum.loadbalancer.server.port: 8500
   # enki:
-    # image: 'gitlab/gitlab-ce:${GITLAB_VERSION:-latest}'
-    # restart: unless-stopped
-    # hostname: 'enki.${HOSTNAME_TLD:?err}'
-    # environment:
-    #   HOSTNAME_TLD: ${HOSTNAME_TLD:?err}
-    #   GITLAB_OMNIBUS_CONFIG: | # TODO: Configure Gitlab https://docs.gitlab.com/ee/install/docker.html#pre-configure-docker-container
-    #     external_url 'http://enki.$HOSTNAME_TLD'
-    #     # Add any other gitlab.rb configuration here, each on its own line
-    # volumes:
-    #   - ${GITLAB_HOME:?err}/config:/etc/gitlab
-    #   - ${GITLAB_HOME:?err}/logs:/var/log/gitlab
-    #   - ${GITLAB_HOME:?err}/data:/var/opt/gitlab
-    # shm_size: '256m'
-    # labels:
-    #   traefik.enable: True
-    #   traefik.http.services.enki.loadbalancer.server.port: 80
+  # image: 'gitlab/gitlab-ce:${GITLAB_VERSION:-latest}'
+  # restart: unless-stopped
+  # hostname: 'enki.${HOSTNAME_TLD:?err}'
+  # environment:
+  #   HOSTNAME_TLD: ${HOSTNAME_TLD:?err}
+  #   GITLAB_OMNIBUS_CONFIG: | # TODO: Configure Gitlab https://docs.gitlab.com/ee/install/docker.html#pre-configure-docker-container
+  #     external_url 'http://enki.$HOSTNAME_TLD'
+  #     # Add any other gitlab.rb configuration here, each on its own line
+  # volumes:
+  #   - ${GITLAB_HOME:?err}/config:/etc/gitlab
+  #   - ${GITLAB_HOME:?err}/logs:/var/log/gitlab
+  #   - ${GITLAB_HOME:?err}/data:/var/opt/gitlab
+  # shm_size: '256m'
+  # labels:
+  #   traefik.enable: True
+  #   traefik.http.services.enki.loadbalancer.server.port: 80
   # astarte:  JS website
   #   image
   # tangaroa:
   #   image
+version: '3.7'
