@@ -5,6 +5,9 @@ services:
   #   restart: unless-stopped
   #   labels:
   #     traefik.enable: true
+  #     traefik.http.routers.hendrix.entrypoints: websecure
+  #     traefik.http.routers.hendrix.tls: true
+  #     traefik.http.services.hendrix.loadbalancer.server.port: <port>
   hendrix:
     container_name: hendrix
     environment:
@@ -15,27 +18,29 @@ services:
     image: traefik:${TRAEFIK_VERSION:-v3.1}
     labels:
       traefik.enable: True
+      traefik.http.routers.hendrix.entrypoints: websecure
+      traefik.http.routers.hendrix.service: api@internal
+      traefik.http.routers.hendrix.tls: true
+      traefik.http.services.hendrix.loadbalancer.server.port: 8080
     ports:
       - '80:80'
       - '443:443'
-      - '8080:8080'
+      # TODO: Look into hardening the docker network
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro # So that Traefik can listen to the Docker events
-      - ./traefik/traefik.yml:/etc/traefik/traefik.yml:ro # Static config
-      - ./traefik/dynamic.yml:/etc/traefik/dynamic.yml:ro # Dynamic config
-      - ./letsencrypt:/letencrypt:rw
-      - ./test_certs:/certs
+      - ./traefik/config/traefik.yml:/etc/traefik/traefik.yml:ro # Static config
+      - ./traefik/config/dynamic.yml:/etc/traefik/dynamic.yml:ro # Dynamic config
+      - ./traefik/letsencrypt:/letencrypt:rw # Folder for letsencrypt to handle auto signing tls
+      - ./traefik/local_certs:/certs # Folder for certs used in local testing
 
   whoami:
     container_name: whoami
     image: traefik/whoami
     labels:
-      # entrypoints.websecure.http.tls.certificates[0].certFile: /certs/traefik-selfsigned.crt
-      # entrypoints.websecure.http.tls.certificates[0].keyFile: /certs/traefik-selfsigned.key
       traefik.enable: True
-      # traefik.http.routers.whoami.certResolver: httpsResolver
-      # traefik.http.routers.whoami.port: 80
-      # traefik.http.routers.whoami.tls: True
+      traefik.http.routers.whoami.entrypoints: websecure
+      traefik.http.routers.whoami.tls: True
+      traefik.http.services.whoami.loadbalancer.server.port: 80
 
   # khazad-dum: # https://hub.docker.com/_/vault
   #   image: vault:${VAULT_VERSION:-latest}

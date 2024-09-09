@@ -1,0 +1,51 @@
+# yaml-language-server: $schema=https://json.schemastore.org/traefik-v2.json
+
+# Example traefik.yml file
+# https://raw.githubusercontent.com/traefik/traefik/v3.1/traefik.sample.yml
+
+api:
+  dashboard: true
+
+certificatesResolvers:
+  httpsResolver:
+    acme:
+      caServer: 'https://acme-staging-v02.api.letsencrypt.org/directory' # Uncomment for local testing
+      certificatesDuration: 2160 # 90 days, renew period of 30 days, renew interval 1 day
+      dnsChallenge:
+        delayBeforeCheck: '0'
+        provider: linode
+      email: '{{ env "HTTPS_EMAIL" }}'
+      storage: '/letsencrypt/acme.json'
+      
+
+
+entryPoints:
+  web:
+    address: :80
+    http:
+      redirections:
+        entryPoint:
+          permanent: true
+          scheme: 'https'
+          to: 'websecure'
+  websecure:
+    address: :443
+
+global:
+  checkNewVersion: true
+  sendAnonymousUsage: false
+
+log:
+  format: json
+  level: ERROR
+
+providers:
+  docker:
+    defaultRule: 'Host(`{{ normalize .ContainerName }}.{{ env "HOSTNAME_TLD" }}`)'
+    exposedByDefault: False
+  file:
+    filename: '/etc/traefik/dynamic.yml'
+    watch: True
+
+
+

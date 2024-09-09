@@ -1,0 +1,18 @@
+# yaml-language-server: $schema=https://json.schemastore.org/traefik-v2-file-provider.json
+
+tls:
+  stores:
+    default:
+    # The use of both defaultCertificate and defaultGeneratedCert allows for a generated file to be used for local development and then for letsencrypt to be used for cloud deployments
+      defaultCertificate:
+        certFile: '/certs/traefik-selfsigned.crt'
+        keyFile: '/certs/traefik-selfsigned.key'
+      defaultGeneratedCert:
+        domain:
+          main: '{{ env "HOSTNAME_TLD" }}'
+          sans:
+            - '*.{{ env "HOSTNAME_TLD" }}'
+        resolver: httpsResolver
+
+
+      
