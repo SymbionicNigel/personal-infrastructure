@@ -12,7 +12,9 @@
 Required CLI packages:
 
 - Docker/Docker-compose
-- terraform
+- [terraform](https://developer.hashicorp.com/terraform/tutorials/aws-get-started/install-cli)
 - [PNPM](https://pnpm.io/)
 - node
 - postgres
+- [Linode-Cli](https://github.com/linode/linode-cli)
+  - `linode-cli configure --token`

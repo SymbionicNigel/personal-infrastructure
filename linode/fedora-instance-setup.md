@@ -1,4 +1,4 @@
-## Guide - Setting up and Securing a Compute Instance
+# Guide - Setting up and Securing a Compute Instance
 
 [Linode's Guide](https://www.linode.com/docs/products/compute/compute-instances/guides/set-up-and-secure/#ubuntu-and-debian)
 
