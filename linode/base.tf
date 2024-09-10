@@ -2,21 +2,16 @@ terraform {
   required_providers {
     linode = {
         source = "linode/linode"
+        version = "2.27.0"
     }
   }
 }
 
-provider "linode" {}
-
-# TODO: Handle creating primary instance
-
-resource "linode_instance" "fedora-test" {
-  watchdog_enabled = true
+provider "linode" {
+  config_path = "~/.config/linode-cli"
+  config_profile = ""
+  token = ""
 }
 
+# TODO: Handle creating primary instance
 # TODO: handle restricting network access
-
-resource "linode_firewall" "main_instance_firewall" {}
-
-resource "linode_firewall_device" "main_instance_firewall_devices" {}
-

@@ -1,21 +1,24 @@
-resource "linode_domain" "symbionicDomain" {
+
+resource "linode_domain" "symbionic_tech" {
   type = "master"
   domain = "symbionic.tech"
+  expire_sec = 0
   soa_email = "nphilmont2010@gmail.com"
 }
 
-resource "linode_domain_record" "flaskTest" {
-  for_each = set("symbionic.tech", "*.symbionic.tech")
-  domain_id = linode_domain.symbionicDomain.id
+resource "linode_domain_record" "symbionic_a_records" {
+  for_each = tomap({
+    symbionic = "",
+    widcard=  "*"
+  })
+  domain_id = linode_domain.symbionic_tech.id
   record_type = "A"
-  name = each.key
-  target = linode_instance.fedora-test.private_ip_address
-}
-
-resource "linode_domain_record" "symbionic_NS_records" {
-  for_each = range(5)
-  domain_id = linode_domain.symbionicDomain.id
-  record_type = "NS"
-  name = format("ns%s.linode.com", each.key)
-  target = "symbionic.tech"
+  name = each.value
+  target = "172.234.27.65"
+  weight = 0
+  port = 0
+  priority = 0
+  protocol = null
+  service = null
+  ttl_sec = 0
 }
