@@ -4,15 +4,12 @@
         "mikestead.dotenv",
         "dbaeumer.vscode-eslint",
         "hashicorp.terraform",
-        "ecmel.vscode-html-css",
         "davidanson.vscode-markdownlint",
         "ckolkman.vscode-postgres",
-        "prisma.prisma",
         "ms-python.python",
         "rust-lang.rust-analyzer",
         "gruntfuggly.todo-tree",
         "wakatime.vscode-wakatime",
-        "redhat.vscode-yaml",
-        "ms-azuretools.vscode-azureterraform"
+        "redhat.vscode-yaml"
     ]
 }
