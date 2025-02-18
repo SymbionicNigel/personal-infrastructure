@@ -1,3 +1,3 @@
-[submodule "dotfiles"]
-	path = dotfiles
-	url = https://github.com/SymbionicNigel/dotfiles.git
+[submodule "dotfile-utils"]
+	path = dotfile-utils
+	url = https://github.com/SymbionicNigel/dotfile-utils.git
