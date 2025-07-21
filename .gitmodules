@@ -1,3 +1,6 @@
 [submodule "dotfile-utils"]
 	path = dotfile-utils
 	url = git@github.com:SymbionicNigel/dotfile-utils.git
+[submodule ".secrets"]
+	path = .secrets
+	url = git@github.com:SymbionicNigel/personal-infrastructure-dotfiles.git

@@ -6,4 +6,6 @@
         "source.fixAll": "explicit"
     },
     "eslint.enable": true,
+    "todo-tree.tree.disableCompactFolders": true,
+    "todo-tree.tree.showCountsInTree": true,
 }

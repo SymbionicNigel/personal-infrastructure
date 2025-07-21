@@ -1,3 +1,7 @@
+# This file is managed by chezmoi from dot_gitignore.tmpl
+# in the secrets repo. Do not edit it directly.
+
+# --- Start of content from original .gitignore ---
 .env
 _vault
 *.key
@@ -10,3 +14,13 @@ pgdata
 .terraform.lock.hcl
 terraform.tfstate.backup
 terraform.tfstate
+# --- End of content from original .gitignore ---
+
+# --- Start of chezmoi-managed entries ---
+
+# Ignore the chezmoi state file.
+chezmoistate.boltdb
+
+# Ignore all other files managed by this chezmoi instance.
+
+# --- End of chezmoi-managed entries ---

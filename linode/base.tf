@@ -32,6 +32,8 @@ provider "linode" {
 
 # TODO: Handle creating primary instance
 # TODO: handle restricting network access
+# TODO: Add a GitLab provider resource to manage the chezmoi generic package artifact in the self-hosted GitLab instance (enki).
+# TODO: When creating the build runner instance, ensure its cloud-init/user_data script is configured to pull the chezmoi artifact from the self-hosted GitLab package registry.
 
 module "domain" {
   source = "../modules/domains"
