@@ -4,37 +4,103 @@
 
 If initializing again or for another project:
 
-1. Follow the instructions [here](https://developer.hashicorp.com/terraform/install#linux) to install the most recent version of terraform.
-2. Sign up for a terraform cloud account, generate a token for local use, and connect to Vault Secrets
-   1. Visit [HCP Terraform](https://app.terraform.io/) and create an account, an organization and a project.
-   2. Once logged in navigate [here](https://app.terraform.io/app/settings/tokens), store this token in a password manager for use in the CLI
-   3. Navigate to [HCP cloud](https://portal.cloud.hashicorp.com/). Create sign in with the account you used on HCP Terraform.
-   4. Link HCP Terraform and Vault in HCP Cloud
-      1. In HCP Cloud go to [Vault > Apps](https://portal.cloud.hashicorp.com/services/secrets/apps) and create a new app in Vault
-      2. Click on the Apps > Integrations tab, find the HCP Terraform card and click add.
-      3. Go back to HCP Terraform and go to the API Tokens (app > settings > authentication token), create one, and copy the value into the screen in HCP Cloud connecting the two services.
-3. TODO: include steps to get linode CLI and provider setup
+1. Install prerequisite cli tools
+   1. Follow the instructions at the following link to install [terraform](https://developer.hashicorp.com/terraform/install#linux)
+   2. Follow the instructions at the following link to install the [linode-cli](https://techdocs.akamai.com/cloud-computing/docs/install-and-configure-the-cli)
+2. Setup the Bootstrap env file
+   1. Copy the .example.env file located in `environments/bootstrap/` to `environments/bootstrap/.env`
+   2. Run the following command `linode configure --token` and replace the
+   placeholder token in the new environment file.
+   3. replace the bucket name and region with your desired values.
+   4. Run the add secret script from the root of the project to add this .env to
+     your secrets submodule.
+     `bash ./dotfile-utils/scripts/chezmoi-add-secret.sh --encrypt "./linode/environments/bootstrap/.env"`
+3. Run script to bootstrap the backend for the main terraform managed environment.
+   `cd linode/environments/bootstrap && bash ./bootstrap.sh` This script will
+   perform the following operations.
+   1. Run the terraform init and apply.
+   2. Configure target environment's terraform module with the bootstrap terraform
+     outputs.
+   3. Add the following files to the secrets submodule:
+      1. The bootstrap module's `.tfstate` and `.tfstate.backup`.
+      2. The `.env` and `backend.hcl` files for the target environment's terraform
+      module.
 
-## Considerations & Concessions
+## Rationale
 
-### Terraform cloud as a State Backend
+This project uses a **hybrid approach** to Terraform state management that
+balances self-hosting with managed services. It is based on a single cloud
+solution with as many portions manages within git or terraform as possible.
+Initially terraform cloud and hashicorp vault was considered for use as a
+backend and secrets store, but between conception and implementation its
+service structure changed and is no longer viable for a self-hosted
+infrastructure.
 
-The goals I had for using terraform/IAC was to have easily configured, separated, and reproducible environments with an easily recoverable infrastructure state for this project. My initial plan was to use some self hosted method of storing environment variables and dotfiles for each environment to implement the configurable and separated environments. Alongside that I would use terraform to setup an object bucket in linode and transferring state to that bucket as the backend once created.
+### Bootstrap Environment (Local State)
 
-I was not able to get this working with the current versions of boto3, the linode-cli, and terraform. With few other solutions which did not require provisioning or paying for resources in another cloud (s3 + DynamoDB, GCP, Consul), my options were use a hosted version of GitLab and its integrated http backend or to use terraform cloud.
+The `environments/bootstrap/` directory uses **local state** to solve the
+chicken-and-egg problem of creating infrastructure for state storage. This
+environment:
 
-While I do like the idea of using GitLab for this project, I would rather it be the self hosted version. There is a lot more configuration that would be needed to get me started than just using terraform cloud. Doing so allows for a simple and direct integration with the terraform cli, no extra steps to bootstrap the storage, and simple separate environments through workspaces. If I feel like it is worth it to move backends at a later date I can but I see this as not likely unless HashiCorp seriously changes terraform or this becomes a paid service.
+- Creates a Linode Object Storage bucket for remote state
+- Generates access keys with appropriate permissions
+- Produces configuration files for production environments
+- Requires no pre-existing infrastructure
 
-While I could go as far as codifying the setup of terraform cloud using the TFE Provider, I do not think this is necessary and would then potentially re-introduce the bootstrapping issue.
+### Production Environment (S3-Compatible Backend)
 
-### Hashicorp Vault for Secrets Management
+The `environments/production/` directory uses **Linode Object Storage** as an
+S3-compatible backend. This approach was chosen because:
 
-Given that I have already made the decision to include HashiCorp services in the stack for this project, I decided to use Vault as the secrets manager. It integrated with the state management and cli easily using the workspaces within terraform cloud to expose the values in the terraform provider. I can explore other backups, anything from something which stores dotfiles to secrets amanger itself to self hosting vault, this was sjust the easiest to get started on.
+- **Self-hosted**: All infrastructure remains within Linode, avoiding
+  multi-cloud dependencies
+- **Cost-effective**: No additional services required (unlike AWS S3 + DynamoDB
+  or GCP Cloud Storage)
+- **Simple recovery**: State files are versioned and encrypted in Object Storage
+- **Standard protocol**: Uses the S3 API, making migration paths straightforward
+  if needed
 
-There will be a separation of some environment variables and other secrets which I will not be storing in Vault, those will be the manually generated tokens or global account configuration, things generally needed to bootstrap this project. For now I think I will include these values in `.tfvars` files locally. These fields are:
+### Secrets Management Architecture
 
-1. HCP_TOKEN
-2. LINODE_TOKEN
-3. ENVIRON
-4. HOSTNAME_TLD
-5. EMAIL_ADDRESS
+This project uses **chezmoi with GPG encryption** for secrets management,
+providing a git-based, encrypted approach that keeps sensitive data under
+version control while maintaining security.
+
+#### Secret Categories
+
+Secrets are divided into two tiers:
+
+**1. Bootstrap Secrets** (stored in chezmoi)
+
+- `LINODE_TOKEN`: API token for creating infrastructure
+- Terraform state files from bootstrap environment
+- Required for initial infrastructure setup
+
+#### Required Configuration Values
+
+Environment-specific variables are managed through:
+
+- **Environment files** (`.env`): Terraform variables (e.g., `TF_VAR_*`)
+- **Backend configuration** (`backend.hcl`): S3 backend credentials and
+  endpoints
+
+Required configuration values:
+
+1. `LINODE_TOKEN` - Linode API authentication
+2. `HOSTNAME_TLD` - Base domain for infrastructure
+3. `EMAIL_ADDRESS` - Administrative contact
+
+#### Multi-Environment Support
+
+The `environments/` directory structure supports multiple isolated environments:
+
+- **bootstrap**: One-time setup for Object Storage backend
+- **production**: Primary infrastructure deployment
+- Additional environments (staging, dev) can be added as needed
+
+Each environment maintains its own:
+
+- State backend configuration
+- Environment variables
+- Terraform variable values
+- Isolated infrastructure resources
