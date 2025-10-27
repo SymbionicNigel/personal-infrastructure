@@ -7,7 +7,7 @@ output "region" {
 }
 
 output "endpoint" {
-  value     = linode_object_storage_bucket.terraform_state.endpoint
+  value     = linode_object_storage_bucket.terraform_state.s3_endpoint
   sensitive = true
 }
 

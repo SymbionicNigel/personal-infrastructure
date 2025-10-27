@@ -24,3 +24,7 @@ chezmoistate.boltdb
 # Ignore all other files managed by this chezmoi instance.
 
 # --- End of chezmoi-managed entries ---
+
+backend.hcl
+.env.bitwarden
+linode/environments/production/id_ed25519.pub

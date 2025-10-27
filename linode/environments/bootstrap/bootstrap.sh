@@ -2,8 +2,19 @@
 
 # Intended to be ran from /linode/environments/bootstrap
 set -a
+# shellcheck source=/dev/null
 source .env
 set +a
+
+# Source Bitwarden session if available
+# Get parent repository root (handles both submodule and parent repo contexts)
+PROJECT_ROOT=$(git rev-parse --show-superproject-working-tree 2>/dev/null)
+if [ -z "$PROJECT_ROOT" ]; then
+    PROJECT_ROOT=$(git rev-parse --show-toplevel 2>/dev/null) || { echo "Error: Not in a git repository"; exit 1; }
+fi
+if [ -f "$PROJECT_ROOT/.env.bitwarden" ] || [ -n "${BW_SESSION:-}" ]; then
+    source "$PROJECT_ROOT/dotfile-utils/scripts/source_bitwarden_session.sh" || { echo "Error: Bitwarden session setup failed"; exit 1; }
+fi
 
 # Function to check if file is managed by chezmoi and add or merge accordingly
 # Args: $1 = file path relative to repo root
@@ -15,6 +26,7 @@ add_or_merge_to_chezmoi() {
         chezmoi merge --config ./.chezmoi.toml "$file_path"
     else
         echo "$file_path is not managed. Adding to chezmoi..."
+        # shellcheck source=dotfile-utils/scripts/chezmoi-add-secret.sh
         source ./dotfile-utils/scripts/chezmoi-add-secret.sh --encrypt "$file_path"
     fi
 }
@@ -28,14 +40,17 @@ REGION=$(terraform output --raw region)
 BUCKET_NAME=$(terraform output --raw bucket_name)
 ENDPOINT=$(terraform output --raw endpoint)
 
-cat << EOF > "../production/.env"
-AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID
+# Build the .env file content
+ENV_CONTENT="AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID
 AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY
-EOF
+"
+
+# Write the .env file
+echo "$ENV_CONTENT" > "../production/.env"
 
 cat << EOF > "../production/backend.hcl"
 backend "s3" {
-    endpoint                    = "${ENDPOINT}" # or your region
+    endpoint                    = "${ENDPOINT}"
     bucket                      = "${BUCKET_NAME}"
     key                         = "terraform.tfstate"
     region                      = "${REGION}" # must match endpoint region
@@ -48,7 +63,7 @@ backend "s3" {
 EOF
 
 # Move to root of repository to add files to secrets submodule
-cd ../../..
+cd "$(git rev-parse --show-toplevel)"
 
 # Add or merge files to chezmoi
 add_or_merge_to_chezmoi "./linode/environments/production/.env"
