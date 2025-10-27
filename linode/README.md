@@ -2,7 +2,7 @@
 
 ## Initialization & Bootstrapping
 
-If initializing again or for another project:
+If initializing again, in CI, or for another project:
 
 1. Install prerequisite cli tools
    1. Follow the instructions at the following link to install [terraform](https://developer.hashicorp.com/terraform/install#linux)
@@ -16,11 +16,11 @@ If initializing again or for another project:
      your secrets submodule.
      `bash ./dotfile-utils/scripts/chezmoi-add-secret.sh --encrypt "./linode/environments/bootstrap/.env"`
 3. Run script to bootstrap the backend for the main terraform managed environment.
-   `cd linode/environments/bootstrap && bash ./bootstrap.sh` This script will
-   perform the following operations.
+`cd linode/environments/bootstrap && bash ./bootstrap.sh` This script will perform
+the following operations.
    1. Run the terraform init and apply.
    2. Configure target environment's terraform module with the bootstrap terraform
-     outputs.
+   outputs.
    3. Add the following files to the secrets submodule:
       1. The bootstrap module's `.tfstate` and `.tfstate.backup`.
       2. The `.env` and `backend.hcl` files for the target environment's terraform
