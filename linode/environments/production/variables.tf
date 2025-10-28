@@ -1,5 +1,3 @@
-# TODO: add these values to .env file
-
 variable "EMAIL_ADDRESS" {
   type        = string
   sensitive   = true
