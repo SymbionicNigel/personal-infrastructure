@@ -21,6 +21,7 @@ set_ssh_config "PasswordAuthentication" "no"
 set_ssh_config "PermitRootLogin" "prohibit-password"
 set_ssh_config "PubkeyAuthentication" "yes"
 set_ssh_config "ChallengeResponseAuthentication" "no"
+set_ssh_config "UsePAM" "no"
 # Restart SSH to apply changes
 systemctl restart sshd
 
@@ -32,9 +33,27 @@ dpkg-reconfigure -f noninteractive tzdata
 # Configure hostname
 hostnamectl set-hostname "dokploy-main.${HOSTNAME_TLD}"
 
-# Create non-root user
+# Create non-root user and add public key
 adduser symbionic_dokploy_user sudo
-# TODO: add ssh key for this user
+cp /root/.ssh/authorized_keys /home/symbionic_dokploy_user/.ssh/authorized_keys
 
+# Install docker and docker compose
+curl -fsSL https://get.docker.com -o get-docker.sh
+sh get-docker.sh
+rm get-docker.sh
 
-# TODO: install dokploy and other data/users
+systemctl enable docker
+usermod -aG docker symbionic_dokploy_user
+
+# Install dokploy
+curl -sSL https://dokploy.com/install.sh | sh
+
+# Configure firewall with ufw
+ufw default deny incoming
+ufw default allow outgoing
+ufw allow OpenSSH # Remove this if I ever move to tailscale
+ufw allow 80
+ufw allow 443
+ufw allow 3000
+
+ufw enable

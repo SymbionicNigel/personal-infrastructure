@@ -9,6 +9,27 @@
         "ProgramFiles": "C:\\Program Files",
         "ProgramData": "C:\\ProgramData"
       }
+    },
+    "excalidraw": {
+      "type": "http",
+      "url": "https://mcp.excalidraw.com"
+    },
+    "dokploy-mcp": {
+      "command": "npx",
+      "args": ["-y", "@ahdev/dokploy-mcp"],
+      "env": {
+        "DOKPLOY_URL": "https://your-dokploy-server.com/api",
+        "DOKPLOY_API_KEY": "your-dokploy-api-token"
+      }
+    },
+    "linode": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@takashito/linode-mcp-server",
+        "--token",
+        "$TLS_LINODE_TOKEN"
+      ]
     }
   }
 }
