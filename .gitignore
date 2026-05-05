@@ -27,4 +27,6 @@ chezmoistate.boltdb
 backend.hcl
 .env*
 !.env*.example
+linode/environments/production/id_ed25519
 linode/environments/production/id_ed25519.pub
+.dokploy-api-key

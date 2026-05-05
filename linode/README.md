@@ -26,6 +26,48 @@ the following operations.
       2. The `.env` and `backend.hcl` files for the target environment's terraform
       module.
 
+## Deploying Dokploy (Stages 1 + 2)
+
+After bootstrap is complete, the full stack — Linode instance, DNS, Dokploy
+admin/API key, and Dokploy projects/apps/domains — is deployed in two
+independent stages, each with its own script in its environment directory.
+The stages are designed to run as separate steps in a CI pipeline.
+
+### Stage 1 — Production (Linode + DNS + Dokploy bootstrap)
+
+```bash
+cd linode/environments/production && bash production.sh
+```
+
+Performs:
+
+- `terraform init` + `apply` — provisions Linode + DNS.
+- The instance's `remote-exec` provisioner blocks until cloud-init completes;
+  `local-exec` retrieves the Dokploy API key to
+  `linode/environments/production/.dokploy-api-key`.
+- Generates `linode/environments/dokploy/.env` (API key, S3 creds, and
+  `HOSTNAME_TLD`) so the next stage has its inputs.
+- Adds `production/.env` to chezmoi (encrypts into `.secrets/`).
+
+### Stage 2 — Dokploy (projects, apps, domains)
+
+```bash
+cd linode/environments/dokploy && bash dokploy.sh
+```
+
+Performs:
+
+- `terraform init` + `apply` against the `j0bIT/dokploy` provider — creates
+  the `symbionic-services` project, the `janus` smoke-test app, and a
+  Let's Encrypt domain at `janus.<HOSTNAME_TLD>`.
+- Adds `dokploy/.env` to chezmoi.
+
+### Subsequent changes
+
+- **Dokploy config only** (new apps, domains, env vars): re-run Stage 2.
+- **Application code**: push to GitHub — Dokploy redeploys automatically when
+  the `dokploy_application` has `auto_deploy = true`.
+
 ## Rationale
 
 This project uses a **hybrid approach** to Terraform state management that
