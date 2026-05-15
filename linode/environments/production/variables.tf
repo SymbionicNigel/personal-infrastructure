@@ -48,6 +48,12 @@ variable "DASHBOARD_SUBDOMAIN" {
 variable "DOKPLOY_VERSION" {
   type        = string
   nullable    = false
-  default     = "v0.29.2"
+  default     = "v0.29.4"
   description = "Pinned Dokploy release tag. Defaulted so rebuilds are reproducible — only override (via TF_VAR_DOKPLOY_VERSION) for one-off testing of a different version. To bump the production pin, edit the default here and commit."
+}
+
+variable "GPG_RECIPIENT" {
+  type        = string
+  nullable    = false
+  description = "GPG recipient (key id, fingerprint, or email) used to encrypt acme.json backups. Public key must be in the deploy machine's gpg keyring."
 }

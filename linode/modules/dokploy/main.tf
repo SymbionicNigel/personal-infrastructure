@@ -84,7 +84,8 @@ resource "linode_instance" "dokploy_main" {
 
   # Retrieve the API key to a local file for Stage 2
   provisioner "local-exec" {
-    command = "ssh -o StrictHostKeyChecking=no -i ${path.root}/id_ed25519 root@${one(self.ipv4)} cat /root/.dokploy-api-key > ${path.root}/.dokploy-api-key"
+    interpreter = ["bash", "-c"]
+    command     = "ssh -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile=/dev/null -i ${path.root}/id_ed25519 symbionic_dokploy_user@${one(self.ipv4)} sudo cat /root/.dokploy-api-key > ${path.root}/.dokploy-api-key"
   }
 
   lifecycle {

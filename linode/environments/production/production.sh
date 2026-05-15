@@ -35,6 +35,21 @@ add_or_merge_to_chezmoi() {
 terraform init -backend-config=backend.hcl
 terraform apply -input=false -auto-approve
 
+# Make `ssh dokploy-prod` work for this user by adding a one-line Include to
+# ~/.ssh/config that points at the terraform-generated dokploy.sshconfig.
+# Idempotent: only appended once per user.
+SSH_CONFIG="$HOME/.ssh/config"
+SSH_SNIPPET="$(pwd)/dokploy.sshconfig"
+mkdir -p "$HOME/.ssh"
+touch "$SSH_CONFIG"
+chmod 600 "$SSH_CONFIG"
+INCLUDE_LINE="Include $SSH_SNIPPET"
+if ! grep -Fxq "$INCLUDE_LINE" "$SSH_CONFIG"; then
+    printf '\n# Added by personal-infrastructure production.sh\n%s\n' \
+        "$INCLUDE_LINE" >> "$SSH_CONFIG"
+    echo "Added Include for $SSH_SNIPPET to $SSH_CONFIG"
+fi
+
 API_KEY_FILE="./.dokploy-api-key"
 
 if [ ! -f "$API_KEY_FILE" ]; then

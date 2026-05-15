@@ -22,15 +22,15 @@ resource "dokploy_application" "janus" {
   name       = "janus"
   app_name   = "janus"
 
-  source_type   = "docker"
-  docker_image  = "traefik/whoami:latest"
+  source_type  = "docker"
+  docker_image = "traefik/whoami:latest"
 }
 
 resource "dokploy_domain" "janus" {
-  application_id = dokploy_application.janus.id
-  host           = "janus.${var.HOSTNAME_TLD}"
-  https          = true
+  application_id   = dokploy_application.janus.id
+  host             = "janus.${var.HOSTNAME_TLD}"
+  https            = true
   certificate_type = "letsencrypt"
-  port           = 80
-  path           = "/"
+  port             = 80
+  path             = "/"
 }

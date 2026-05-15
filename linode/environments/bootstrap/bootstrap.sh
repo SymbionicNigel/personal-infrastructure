@@ -43,7 +43,7 @@ upsert_env_var() {
         # `|` chosen as delimiter — won't appear in AWS creds or TF_VAR values
         sed -i "s|^${key}=.*|${key}=${value}|" "$PROD_ENV"
     else
-        echo "${key}=${value}" >> "$PROD_ENV"
+        printf "\n%s=%s" key value >> "$PROD_ENV"
     fi
 }
 
@@ -81,6 +81,7 @@ prompt_if_missing "TF_VAR_DOKPLOY_ADMIN_PASSWORD" "Dokploy admin password"      
 prompt_if_missing "TF_VAR_HOSTNAME_TLD"           "Hostname/TLD (e.g. example.com)"
 prompt_if_missing "TF_VAR_EMAIL_ADDRESS"          "Email for Let's Encrypt / domain owner"
 prompt_if_missing "TF_VAR_REGION"                 "Linode region (e.g. us-ord)"
+prompt_if_missing "TF_VAR_GPG_RECIPIENT"          "GPG recipient (id/fingerprint/email) for acme.json backup encryption"
 
 terraform init
 terraform apply

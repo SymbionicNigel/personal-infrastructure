@@ -29,5 +29,5 @@ resource "linode_domain_record" "main_site_a_records" {
   priority    = 0
   protocol    = null
   service     = null
-  ttl_sec     = 0
+  ttl_sec     = 300
 }

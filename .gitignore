@@ -29,4 +29,5 @@ backend.hcl
 !.env*.example
 linode/environments/production/id_ed25519
 linode/environments/production/id_ed25519.pub
+linode/environments/production/dokploy.sshconfig
 .dokploy-api-key
