@@ -28,45 +28,47 @@ the following operations.
 
 ## Deploying Dokploy (Stages 1 + 2)
 
-After bootstrap is complete, the full stack — Linode instance, DNS, Dokploy
-admin/API key, and Dokploy projects/apps/domains — is deployed in two
-independent stages, each with its own script in its environment directory.
-The stages are designed to run as separate steps in a CI pipeline.
+After bootstrap, the stack deploys in two independent stages — each runnable
+as its own CI step. They are split because the upstream `j0bIT/dokploy`
+provider needs `host` and `api_key` at plan time, so Dokploy must exist
+before any `dokploy_*` resource can be planned.
 
-### Stage 1 — Production (Linode + DNS + Dokploy bootstrap)
+### Stage 1 — Production
 
 ```bash
 cd linode/environments/production && bash production.sh
 ```
 
-Performs:
+Stands up everything the host needs to exist before Dokploy can be talked
+to as a Terraform provider: the Linode instance, firewall, DNS zone,
+wildcard records, ACME DNS-01 config, and the encrypted `acme.json` backup
+job. DNS-01 is configured up-front (rather than relying on Dokploy's
+default HTTP-01) so the dashboard's first cert issuance and any future
+wildcard certs don't depend on port-80 reachability or DNS propagation
+ordering.
 
-- `terraform init` + `apply` — provisions Linode + DNS.
-- The instance's `remote-exec` provisioner blocks until cloud-init completes;
-  `local-exec` retrieves the Dokploy API key to
-  `linode/environments/production/.dokploy-api-key`.
-- Generates `linode/environments/dokploy/.env` (API key, S3 creds, and
-  `HOSTNAME_TLD`) so the next stage has its inputs.
-- Adds `production/.env` to chezmoi (encrypts into `.secrets/`).
+The dashboard is bound to `<DASHBOARD_SUBDOMAIN>.<HOSTNAME_TLD>` by calling
+the Dokploy admin API over SSH from the apply host, using the API key that
+cloud-init wrote to `/root/.dokploy-api-key`. The admin API is loopback-only
+on the instance, which is why the call tunnels over SSH rather than going
+through the provider.
 
-### Stage 2 — Dokploy (projects, apps, domains)
+`production.sh` also writes a generated `dokploy.sshconfig` + `id_ed25519`
+keypair and idempotently appends an `Include` line to `~/.ssh/config` so
+`ssh dokploy-prod` works from the apply host. The instance's raw IP is
+embedded there today; a bastion / Tailscale / Cloudflare Tunnel endpoint
+is the intended replacement (see TODO in `base.tf`).
+
+### Stage 2 — Dokploy
 
 ```bash
 cd linode/environments/dokploy && bash dokploy.sh
 ```
 
-Performs:
-
-- `terraform init` + `apply` against the `j0bIT/dokploy` provider — creates
-  the `symbionic-services` project, the `janus` smoke-test app, and a
-  Let's Encrypt domain at `janus.<HOSTNAME_TLD>`.
-- Adds `dokploy/.env` to chezmoi.
-
-### Subsequent changes
-
-- **Dokploy config only** (new apps, domains, env vars): re-run Stage 2.
-- **Application code**: push to GitHub — Dokploy redeploys automatically when
-  the `dokploy_application` has `auto_deploy = true`.
+Configures Dokploy itself: project, compose stack, and any Dokploy-side
+domains. Routing is driven by Traefik labels in the root `docker-compose.yml`,
+not by `dokploy_domain` resources — labels are the single source of truth
+across local and prod so the same compose file describes both.
 
 ## Rationale
 
@@ -104,45 +106,35 @@ S3-compatible backend. This approach was chosen because:
 
 ### Secrets Management Architecture
 
-This project uses **chezmoi with GPG encryption** for secrets management,
-providing a git-based, encrypted approach that keeps sensitive data under
-version control while maintaining security.
+Sensitive material is kept in git via **chezmoi + GPG**: source files are
+encrypted into the `.secrets/` submodule, and each environment's `.env` /
+`backend.hcl` is added the first time the corresponding script runs. The
+guiding rule is that re-deriving an environment from scratch should require
+only what is in chezmoi plus the bootstrap `LINODE_TOKEN` — no out-of-band
+state.
 
-#### Secret Categories
+Object Storage credentials are deliberately not threaded through `.env` for
+provider auth: `provider "linode"` is configured with `obj_use_temp_keys`,
+which mints short-lived obj keys per apply. The only long-lived obj key in
+the system is the one used by the host for `acme.json` backups, and that
+one is rotated by `time_rotating` (see Stage 1 above).
 
-Secrets are divided into two tiers:
+The canonical list of inputs for the production environment is the file
+[environments/production/variables.tf](./environments/production/variables.tf);
+read it rather than re-listing here. Two callouts worth keeping out of
+the code:
 
-**1. Bootstrap Secrets** (stored in chezmoi)
-
-- `LINODE_TOKEN`: API token for creating infrastructure
-- Terraform state files from bootstrap environment
-- Required for initial infrastructure setup
-
-#### Required Configuration Values
-
-Environment-specific variables are managed through:
-
-- **Environment files** (`.env`): Terraform variables (e.g., `TF_VAR_*`)
-- **Backend configuration** (`backend.hcl`): S3 backend credentials and
-  endpoints
-
-Required configuration values:
-
-1. `LINODE_TOKEN` - Linode API authentication
-2. `HOSTNAME_TLD` - Base domain for infrastructure
-3. `EMAIL_ADDRESS` - Administrative contact
+- `DOKPLOY_VERSION` is pinned with a default so rebuilds are reproducible;
+  override via `TF_VAR_DOKPLOY_VERSION` only for one-off testing and bump
+  the default when promoting a new version.
+- `GPG_RECIPIENT` must be a key already in the apply host's GPG keyring;
+  the ACME backup job encrypts to it before upload, so losing the
+  corresponding private key means losing recoverability of `acme.json`.
 
 #### Multi-Environment Support
 
-The `environments/` directory structure supports multiple isolated environments:
-
-- **bootstrap**: One-time setup for Object Storage backend
-- **production**: Primary infrastructure deployment
-- Additional environments (staging, dev) can be added as needed
-
-Each environment maintains its own:
-
-- State backend configuration
-- Environment variables
-- Terraform variable values
-- Isolated infrastructure resources
+The `environments/` directory is structured so additional environments
+(staging, dev) can sit alongside `bootstrap`, `production`, and `dokploy`
+with their own state backend, vars, and secrets. There is currently no
+non-production environment — the split exists to keep that path open
+rather than to serve a current need.
