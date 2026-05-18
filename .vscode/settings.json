@@ -8,4 +8,8 @@
     "eslint.enable": true,
     "todo-tree.tree.disableCompactFolders": true,
     "todo-tree.tree.showCountsInTree": true,
+    "files.associations": {
+        ".env.*": "dotenv",
+        ".env": "dotenv"
+    },
 }

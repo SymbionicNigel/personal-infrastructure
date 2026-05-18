@@ -2,39 +2,139 @@
 
 ## Initialization & Bootstrapping
 
-If initializing again or for another project:
+If initializing again, in CI, or for another project:
 
-1. Follow the instructions [here](https://developer.hashicorp.com/terraform/install#linux) to install the most recent version of terraform.
-2. Sign up for a terraform cloud account, generate a token for local use, and connect to Vault Secrets
-   1. Visit [HCP Terraform](https://app.terraform.io/) and create an account, an organization and a project.
-   2. Once logged in navigate [here](https://app.terraform.io/app/settings/tokens), store this token in a password manager for use in the CLI
-   3. Navigate to [HCP cloud](https://portal.cloud.hashicorp.com/). Create sign in with the account you used on HCP Terraform.
-   4. Link HCP Terraform and Vault in HCP Cloud
-      1. In HCP Cloud go to [Vault > Apps](https://portal.cloud.hashicorp.com/services/secrets/apps) and create a new app in Vault
-      2. Click on the Apps > Integrations tab, find the HCP Terraform card and click add.
-      3. Go back to HCP Terraform and go to the API Tokens (app > settings > authentication token), create one, and copy the value into the screen in HCP Cloud connecting the two services.
-3. TODO: include steps to get linode CLI and provider setup
+1. Install prerequisite cli tools
+   1. Follow the instructions at the following link to install [terraform](https://developer.hashicorp.com/terraform/install#linux)
+   2. Follow the instructions at the following link to install the [linode-cli](https://techdocs.akamai.com/cloud-computing/docs/install-and-configure-the-cli)
+2. Setup the Bootstrap env file
+   1. Copy the .example.env file located in `environments/bootstrap/` to `environments/bootstrap/.env`
+   2. Run the following command `linode configure --token` and replace the
+   placeholder token in the new environment file.
+   3. replace the bucket name and region with your desired values.
+   4. Run the add secret script from the root of the project to add this .env to
+     your secrets submodule.
+     `bash ./dotfile-utils/scripts/chezmoi-add-secret.sh --encrypt "./linode/environments/bootstrap/.env"`
+3. Run script to bootstrap the backend for the main terraform managed environment.
+`cd linode/environments/bootstrap && bash ./bootstrap.sh` This script will perform
+the following operations.
+   1. Run the terraform init and apply.
+   2. Configure target environment's terraform module with the bootstrap terraform
+   outputs.
+   3. Add the following files to the secrets submodule:
+      1. The bootstrap module's `.tfstate` and `.tfstate.backup`.
+      2. The `.env` and `backend.hcl` files for the target environment's terraform
+      module.
 
-## Considerations & Concessions
+## Deploying Dokploy (Stages 1 + 2)
 
-### Terraform cloud as a State Backend
+After bootstrap, the stack deploys in two independent stages — each runnable
+as its own CI step. They are split because the upstream `j0bIT/dokploy`
+provider needs `host` and `api_key` at plan time, so Dokploy must exist
+before any `dokploy_*` resource can be planned.
 
-The goals I had for using terraform/IAC was to have easily configured, separated, and reproducible environments with an easily recoverable infrastructure state for this project. My initial plan was to use some self hosted method of storing environment variables and dotfiles for each environment to implement the configurable and separated environments. Alongside that I would use terraform to setup an object bucket in linode and transferring state to that bucket as the backend once created.
+### Stage 1 — Production
 
-I was not able to get this working with the current versions of boto3, the linode-cli, and terraform. With few other solutions which did not require provisioning or paying for resources in another cloud (s3 + DynamoDB, GCP, Consul), my options were use a hosted version of GitLab and its integrated http backend or to use terraform cloud.
+```bash
+cd linode/environments/production && bash production.sh
+```
 
-While I do like the idea of using GitLab for this project, I would rather it be the self hosted version. There is a lot more configuration that would be needed to get me started than just using terraform cloud. Doing so allows for a simple and direct integration with the terraform cli, no extra steps to bootstrap the storage, and simple separate environments through workspaces. If I feel like it is worth it to move backends at a later date I can but I see this as not likely unless HashiCorp seriously changes terraform or this becomes a paid service.
+Stands up everything the host needs to exist before Dokploy can be talked
+to as a Terraform provider: the Linode instance, firewall, DNS zone,
+wildcard records, ACME DNS-01 config, and the encrypted `acme.json` backup
+job. DNS-01 is configured up-front (rather than relying on Dokploy's
+default HTTP-01) so the dashboard's first cert issuance and any future
+wildcard certs don't depend on port-80 reachability or DNS propagation
+ordering.
 
-While I could go as far as codifying the setup of terraform cloud using the TFE Provider, I do not think this is necessary and would then potentially re-introduce the bootstrapping issue.
+The dashboard is bound to `<DASHBOARD_SUBDOMAIN>.<HOSTNAME_TLD>` by calling
+the Dokploy admin API over SSH from the apply host, using the API key that
+cloud-init wrote to `/root/.dokploy-api-key`. The admin API is loopback-only
+on the instance, which is why the call tunnels over SSH rather than going
+through the provider.
 
-### Hashicorp Vault for Secrets Management
+`production.sh` also writes a generated `dokploy.sshconfig` + `id_ed25519`
+keypair and idempotently appends an `Include` line to `~/.ssh/config` so
+`ssh dokploy-prod` works from the apply host. The instance's raw IP is
+embedded there today; a bastion / Tailscale / Cloudflare Tunnel endpoint
+is the intended replacement (see TODO in `base.tf`).
 
-Given that I have already made the decision to include HashiCorp services in the stack for this project, I decided to use Vault as the secrets manager. It integrated with the state management and cli easily using the workspaces within terraform cloud to expose the values in the terraform provider. I can explore other backups, anything from something which stores dotfiles to secrets amanger itself to self hosting vault, this was sjust the easiest to get started on.
+### Stage 2 — Dokploy
 
-There will be a separation of some environment variables and other secrets which I will not be storing in Vault, those will be the manually generated tokens or global account configuration, things generally needed to bootstrap this project. For now I think I will include these values in `.tfvars` files locally. These fields are:
+```bash
+cd linode/environments/dokploy && bash dokploy.sh
+```
 
-1. HCP_TOKEN
-2. LINODE_TOKEN
-3. ENVIRON
-4. HOSTNAME_TLD
-5. EMAIL_ADDRESS
+Configures Dokploy itself: project, compose stack, and any Dokploy-side
+domains. Routing is driven by Traefik labels in the root `docker-compose.yml`,
+not by `dokploy_domain` resources — labels are the single source of truth
+across local and prod so the same compose file describes both.
+
+## Rationale
+
+This project uses a **hybrid approach** to Terraform state management that
+balances self-hosting with managed services. It is based on a single cloud
+solution with as many portions manages within git or terraform as possible.
+Initially terraform cloud and hashicorp vault was considered for use as a
+backend and secrets store, but between conception and implementation its
+service structure changed and is no longer viable for a self-hosted
+infrastructure.
+
+### Bootstrap Environment (Local State)
+
+The `environments/bootstrap/` directory uses **local state** to solve the
+chicken-and-egg problem of creating infrastructure for state storage. This
+environment:
+
+- Creates a Linode Object Storage bucket for remote state
+- Generates access keys with appropriate permissions
+- Produces configuration files for production environments
+- Requires no pre-existing infrastructure
+
+### Production Environment (S3-Compatible Backend)
+
+The `environments/production/` directory uses **Linode Object Storage** as an
+S3-compatible backend. This approach was chosen because:
+
+- **Self-hosted**: All infrastructure remains within Linode, avoiding
+  multi-cloud dependencies
+- **Cost-effective**: No additional services required (unlike AWS S3 + DynamoDB
+  or GCP Cloud Storage)
+- **Simple recovery**: State files are versioned and encrypted in Object Storage
+- **Standard protocol**: Uses the S3 API, making migration paths straightforward
+  if needed
+
+### Secrets Management Architecture
+
+Sensitive material is kept in git via **chezmoi + GPG**: source files are
+encrypted into the `.secrets/` submodule, and each environment's `.env` /
+`backend.hcl` is added the first time the corresponding script runs. The
+guiding rule is that re-deriving an environment from scratch should require
+only what is in chezmoi plus the bootstrap `LINODE_TOKEN` — no out-of-band
+state.
+
+Object Storage credentials are deliberately not threaded through `.env` for
+provider auth: `provider "linode"` is configured with `obj_use_temp_keys`,
+which mints short-lived obj keys per apply. The only long-lived obj key in
+the system is the one used by the host for `acme.json` backups, and that
+one is rotated by `time_rotating` (see Stage 1 above).
+
+The canonical list of inputs for the production environment is the file
+[environments/production/variables.tf](./environments/production/variables.tf);
+read it rather than re-listing here. Two callouts worth keeping out of
+the code:
+
+- `DOKPLOY_VERSION` is pinned with a default so rebuilds are reproducible;
+  override via `TF_VAR_DOKPLOY_VERSION` only for one-off testing and bump
+  the default when promoting a new version.
+- `GPG_RECIPIENT` must be a key already in the apply host's GPG keyring;
+  the ACME backup job encrypts to it before upload, so losing the
+  corresponding private key means losing recoverability of `acme.json`.
+
+#### Multi-Environment Support
+
+The `environments/` directory is structured so additional environments
+(staging, dev) can sit alongside `bootstrap`, `production`, and `dokploy`
+with their own state backend, vars, and secrets. There is currently no
+non-production environment — the split exists to keep that path open
+rather than to serve a current need.

@@ -11,7 +11,6 @@ _vault
 _srv
 pgdata
 .terraform
-.terraform.lock.hcl
 terraform.tfstate.backup
 terraform.tfstate
 # --- End of content from original .gitignore ---
@@ -24,3 +23,11 @@ chezmoistate.boltdb
 # Ignore all other files managed by this chezmoi instance.
 
 # --- End of chezmoi-managed entries ---
+
+backend.hcl
+.env*
+!.env*.example
+linode/environments/production/id_ed25519
+linode/environments/production/id_ed25519.pub
+linode/environments/production/dokploy.sshconfig
+.dokploy-api-key

@@ -7,15 +7,24 @@ api:
   dashboard: true
 
 certificatesResolvers:
-  httpsResolver:
+  letsencrypt-prod:
     acme:
-      caServer: 'https://acme-staging-v02.api.letsencrypt.org/directory' # Uncomment for local testing
-      certificatesDuration: 2160 # 90 days, renew period of 30 days, renew interval 1 day
+      caServer: 'https://acme-v02.api.letsencrypt.org/directory'
+      certificatesDuration: 2160
       dnsChallenge:
         delayBeforeCheck: '0'
         provider: linode
       email: '{{ env "HTTPS_EMAIL" }}'
-      storage: '/letsencrypt/acme.json'
+      storage: '/letsencrypt/acme-prod.json'
+  letsencrypt-staging:
+    acme:
+      caServer: 'https://acme-staging-v02.api.letsencrypt.org/directory'
+      certificatesDuration: 2160
+      dnsChallenge:
+        delayBeforeCheck: '0'
+        provider: linode
+      email: '{{ env "HTTPS_EMAIL" }}'
+      storage: '/letsencrypt/acme-staging.json'
       
 
 

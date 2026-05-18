@@ -1,0 +1,41 @@
+variable "region" {
+  type        = string
+  nullable    = false
+  description = "Linode region for the backup bucket"
+}
+
+variable "resource_prefix" {
+  type        = string
+  nullable    = false
+  description = "Sanitized prefix (dots replaced with dashes) used to name the access key"
+}
+
+variable "bucket_name" {
+  type        = string
+  nullable    = false
+  description = "Name of the Object Storage bucket to back up into (created by the calling environment)"
+}
+
+variable "gpg_recipient" {
+  type        = string
+  nullable    = false
+  description = "GPG recipient (key id, fingerprint, or email) used to encrypt backups. Public key must be in the deploy machine's keyring."
+}
+
+variable "instance_ip" {
+  type        = string
+  nullable    = false
+  description = "IPv4 address of the Dokploy instance to configure and restore onto"
+}
+
+variable "key_rotation_trigger" {
+  type        = string
+  nullable    = false
+  description = "Opaque value that, when changed, forces replacement of the object-storage access key. Wire to a time_rotating.rotation_rfc3339."
+}
+
+variable "endpoint" {
+  type        = string
+  nullable    = false
+  description = "S3 endpoint hostname for the backups bucket (e.g. us-ord-1.linodeobjects.com). Pass linode_object_storage_bucket.<bucket>.s3_endpoint so cluster naming stays in the provider's hands."
+}

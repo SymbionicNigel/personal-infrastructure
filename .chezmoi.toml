@@ -1,0 +1,28 @@
+# .chezmoi.toml
+# Local project configuration for chezmoi.
+
+# The source directory is the secrets submodule.
+sourceDir = "./.secrets"
+
+# The destination directory is the project root.
+destDir = "."
+
+# GPG encryption is enabled for this project
+encryption = "gpg"
+
+[gpg]
+# The GPG key ID used for encrypting chezmoi-managed files
+recipient = "9A4ABBA2F90BCF19"
+
+[merge]
+command = "code"
+args = ["--wait", "--diff", "{{ .Destination }}", "{{ .Source }}", "{{ .Target }}"]
+
+[bitwarden]
+# Automatically unlock Bitwarden when needed
+unlock = "auto"
+
+[data]
+# This value determines the operational mode for this project's configuration.
+# It will prompt on the first 'chezmoi apply' if a mode was not set during setup.
+mode="production"
