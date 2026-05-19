@@ -38,6 +38,14 @@ Prefer per-directory documentation over guessing — these are kept current:
   exception and lives in `.secrets/` via chezmoi.
 - **Routing source of truth is Traefik labels** in `docker-compose.yml`,
   not `dokploy_domain` resources.
+- **Routing model is asymmetric between local and prod.** Locally, each
+  service is reached at `http://localhost:<port>` via a published port
+  in the local-override compose file — there is no local reverse proxy,
+  so Traefik labels are inert metadata. In prod, each service is reached
+  at `https://<service>.<HOSTNAME_TLD>` via Dokploy's bundled Traefik,
+  which reads the labels and provisions Let's Encrypt certs. Same
+  compose file describes both; only how traffic reaches the container
+  differs.
 
 ## Common commands
 

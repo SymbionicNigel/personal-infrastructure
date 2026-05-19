@@ -1,0 +1,23 @@
+# Local-only override on top of docker-compose.yml. Auto-loaded by
+# `docker compose up` — no -f flag needed. Not consumed in prod
+# because Terraform inlines docker-compose.yml via templatefile() and
+# passes raw content to Dokploy.
+#
+# Responsibilities:
+#   - Expose each service on a host port so localhost works without
+#     a reverse proxy.
+#   - Flip dokploy-network to non-external so Compose creates it
+#     locally (in prod, Dokploy creates it before stack deploy).
+#
+# To wire up a new service locally, add a `ports:` mapping here that
+# matches the container port in the service's loadbalancer label.
+
+networks:
+  dokploy-network:
+    external: false
+    name: dokploy-network
+
+services:
+  janus:
+    ports:
+      - "8080:80"
