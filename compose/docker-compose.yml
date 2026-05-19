@@ -3,9 +3,9 @@
 #
 #   Production: consumed by Dokploy via `dokploy_compose` in
 #     linode/environments/dokploy/main.tf. Terraform inlines this file
-#     via templatefile() and substitutes ${HOSTNAME_TLD} at apply time.
-#     Dokploy's bundled Traefik picks up the labels below and routes
-#     accordingly.
+#     via templatefile() and substitutes the HOSTNAME_TLD value at apply
+#     time. Dokploy's bundled Traefik picks up the labels below and
+#     routes accordingly.
 #
 #   Local: `docker compose up` auto-loads docker-compose.override.yml
 #     alongside this file. The override adds `ports:` per service so
@@ -14,8 +14,8 @@
 #
 # To add a service:
 #   1. Append a service block following the `janus` pattern.
-#   2. Add Traefik labels (hardcoded prod values; only ${HOSTNAME_TLD}
-#      is interpolated).
+#   2. Add Traefik labels (hardcoded prod values; only the HOSTNAME_TLD
+#      value is interpolated).
 #   3. In docker-compose.override.yml, add a `ports:` mapping so the
 #      service is reachable locally.
 

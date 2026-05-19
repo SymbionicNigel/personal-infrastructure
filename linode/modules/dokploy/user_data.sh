@@ -162,11 +162,19 @@ fi
 # its originCheck and rejects requests with no/unknown origin.
 # Use `-s` (no `-f`) + `|| true` so a transient failure can be diagnosed
 # from the captured body instead of killing the script via set -e.
+#
+# rateLimit.enabled=false: better-auth's apiKey plugin defaults to rate
+# limiting (request_count column on the apikey row); the default cap is
+# 10 requests / 24h. A Terraform-driven key easily exceeds that on a single
+# apply (refresh + plan + apply walks every resource). Once the bucket
+# fills, verifyApiKey silently rejects with !valid → the OpenAPI shim
+# returns HTTP 401 {"message":"Unauthorized"}, indistinguishable from
+# auth failure. Disable rate limiting for this key.
 API_KEY_RESPONSE=$(curl -s -X POST http://localhost:3000/api/auth/api-key/create \
   -H "Content-Type: application/json" \
   -H "Origin: http://localhost:3000" \
   -b "$COOKIE_JAR" \
-  -d "{\"name\":\"terraform\",\"expiresIn\":null,\"metadata\":{\"organizationId\":\"$ORG_ID\"}}" \
+  -d "{\"name\":\"terraform\",\"expiresIn\":null,\"rateLimit\":{\"enabled\":false},\"metadata\":{\"organizationId\":\"$ORG_ID\"}}" \
   2>/dev/null || true)
 API_KEY=$(echo "$API_KEY_RESPONSE" | jq -r '.key // empty' 2>/dev/null || true)
 if [ -z "$API_KEY" ] || [ "$API_KEY" = "null" ]; then
