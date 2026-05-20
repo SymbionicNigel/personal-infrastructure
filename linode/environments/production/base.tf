@@ -17,6 +17,8 @@ terraform {
       version = "~> 0.11"
     }
   }
+
+  backend "s3" {}
 }
 
 # Rotate the object-storage access key every 90 days. The key is consumed only

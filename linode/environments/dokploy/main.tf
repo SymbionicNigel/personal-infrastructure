@@ -8,6 +8,10 @@ terraform {
       source  = "germanbrew/dotenv"
       version = "~> 1.2"
     }
+    http = {
+      source  = "hashicorp/http"
+      version = "~> 3.4"
+    }
   }
 
   # Backend configuration is supplied at init time via
@@ -36,18 +40,34 @@ resource "dokploy_project" "main" {
   description = "Primary services managed by Terraform"
 }
 
-# dokploy_compose requires an environment_id explicitly. Dokploy reserves
-# the name "production" for the auto-created per-project environment, so
-# this Terraform-managed env uses a different name.
-resource "dokploy_environment" "stack" {
-  project_id  = dokploy_project.main.id
-  name        = "stack"
-  description = "Environment owning the Terraform-managed compose stack"
+data "http" "project_one" {
+  # tRPC HTTP GET expects input as a urlencoded superjson envelope.
+  url    = "https://vulcan.${local.hostname_tld}/api/trpc/project.one?input=${urlencode(jsonencode({ json = { projectId = dokploy_project.main.id } }))}"
+  method = "GET"
+  request_headers = {
+    "x-api-key"    = var.DOKPLOY_API_KEY
+    "Content-Type" = "application/json"
+  }
+
+  lifecycle {
+    postcondition {
+      condition     = self.status_code == 200
+      error_message = "project.one returned ${self.status_code}: ${self.response_body}"
+    }
+  }
+}
+
+locals {
+  # Response is wrapped by the superjson transformer: result.data.json.<payload>
+  project_envs = jsondecode(data.http.project_one.response_body).result.data.json.environments
+  production_env_id = one([
+    for env in local.project_envs : env.environmentId if env.name == "production"
+  ])
 }
 
 resource "dokploy_compose" "stack" {
   project_id           = dokploy_project.main.id
-  environment_id       = dokploy_environment.stack.id
+  environment_id       = local.production_env_id
   name                 = "main-application-stack"
   source_type          = "raw"
   compose_file_content = local.compose_content
