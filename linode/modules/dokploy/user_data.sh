@@ -11,7 +11,7 @@ APT_OPTS=(-y -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confo
 
 apt-get update -y
 apt-get upgrade "$${APT_OPTS[@]}"
-apt-get install "$${APT_OPTS[@]}" curl jq ufw s3cmd gnupg unattended-upgrades fail2ban
+apt-get install "$${APT_OPTS[@]}" curl jq ufw sl s3cmd gnupg unattended-upgrades fail2ban
 
 # Configure unattended-upgrades to apply security-pocket updates only, without
 # auto-reboot. Running services stay up across patches; we reboot manually.
@@ -157,18 +157,32 @@ if [ -z "$ORG_ID" ] || [ "$ORG_ID" = "null" ]; then
     exit 1
 fi
 
-# Create API key using better-auth's apiKey plugin.
-# Origin header is required: api-key/create is a POST, so better-auth runs
-# its originCheck and rejects requests with no/unknown origin.
-# Use `-s` (no `-f`) + `|| true` so a transient failure can be diagnosed
-# from the captured body instead of killing the script via set -e.
-API_KEY_RESPONSE=$(curl -s -X POST http://localhost:3000/api/auth/api-key/create \
+# Create API key via Dokploy's user.createApiKey tRPC route, NOT better-auth's
+# /api/auth/api-key/create. Two reasons the better-auth endpoint can't set rate
+# limits from outside:
+#   1. Its Zod schema expects flat `rateLimitEnabled`/`rateLimitMax`/
+#      `rateLimitTimeWindow` fields, not a nested `rateLimit` object — unknown
+#      keys are silently dropped, so the column falls back to the plugin
+#      default of enabled=true, max=10/24h.
+#   2. Even with the correct field names, those fields are "server-only" and
+#      HTTP requests carrying them are rejected with BAD_REQUEST (see
+#      better-auth packages/api-key/src/routes/create-api-key.ts isClientRequest
+#      gate).
+# The Dokploy route below wraps better-auth's server-side createApiKey call,
+# bypassing the client gate and accepting flat rate-limit fields. Auth is via
+# the session cookie picked up during sign-up. Response is tRPC+superjson, so
+# the key is at .result.data.json.key.
+#
+# Rate limit: 1000 requests / 1 hour. Comfortably absorbs Terraform applies
+# (refresh+plan+apply ≈ tens of calls per resource) plus dashboard browsing,
+# while still catching runaway loops or compromised keys.
+API_KEY_RESPONSE=$(curl -s -X POST http://localhost:3000/api/trpc/user.createApiKey \
   -H "Content-Type: application/json" \
   -H "Origin: http://localhost:3000" \
   -b "$COOKIE_JAR" \
-  -d "{\"name\":\"terraform\",\"expiresIn\":null,\"metadata\":{\"organizationId\":\"$ORG_ID\"}}" \
+  -d "{\"json\":{\"name\":\"terraform\",\"rateLimitEnabled\":true,\"rateLimitTimeWindow\":3600000,\"rateLimitMax\":1000,\"metadata\":{\"organizationId\":\"$ORG_ID\"}}}" \
   2>/dev/null || true)
-API_KEY=$(echo "$API_KEY_RESPONSE" | jq -r '.key // empty' 2>/dev/null || true)
+API_KEY=$(echo "$API_KEY_RESPONSE" | jq -r '.result.data.json.key // empty' 2>/dev/null || true)
 if [ -z "$API_KEY" ] || [ "$API_KEY" = "null" ]; then
     echo "ERROR: API key creation failed" >&2
     echo "Response body: $API_KEY_RESPONSE" >&2

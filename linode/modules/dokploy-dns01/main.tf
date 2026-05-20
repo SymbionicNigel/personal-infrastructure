@@ -42,13 +42,105 @@ resource "linode_token" "dns" {
   }
 }
 
+locals {
+  # Replaces Dokploy's default traefik.yml. The stock file hard-codes
+  # httpChallenge on the letsencrypt resolver, which conflicts with the DNS-01
+  # env vars pushed by null_resource.configure: lego refuses wildcards (illegal
+  # over HTTP-01) and falls back to HTTP-01 for the apex (firewall-blocked).
+  traefik_yaml = <<-YAML
+    global:
+      sendAnonymousUsage: false
+    providers:
+      swarm:
+        exposedByDefault: false
+        watch: true
+      docker:
+        exposedByDefault: false
+        watch: true
+        network: dokploy-network
+      file:
+        directory: /etc/dokploy/traefik/dynamic
+        watch: true
+    entryPoints:
+      web:
+        address: ":80"
+      websecure:
+        address: ":443"
+        http3:
+          advertisedPort: 443
+        http:
+          tls:
+            certResolver: letsencrypt
+    api:
+      insecure: true
+    certificatesResolvers:
+      letsencrypt:
+        acme:
+          email: ${var.email}
+          storage: /etc/dokploy/traefik/dynamic/acme.json
+          dnsChallenge:
+            provider: linode
+            resolvers:
+              - "1.1.1.1:53"
+              - "8.8.8.8:53"
+  YAML
+}
+
+# Rewrite the host's /etc/dokploy/traefik/traefik.yml to use DNS-01.
+# writeMainConfig writes to a known absolute path; the file is volume-mounted
+# read-only into the traefik container, so a write here changes what traefik
+# sees on its next restart. The env push by null_resource.configure triggers
+# writeTraefikSetup, which recreates the container — picking up both the new
+# YAML and the new env atomically.
+resource "null_resource" "configure_main" {
+  triggers = {
+    instance_ip = var.instance_ip
+    yaml_hash   = sha256(local.traefik_yaml)
+  }
+
+  connection {
+    type        = "ssh"
+    host        = var.instance_ip
+    user        = "symbionic_dokploy_user"
+    private_key = file("${path.root}/id_ed25519")
+  }
+
+  provisioner "file" {
+    destination = "/home/symbionic_dokploy_user/.dokploy-traefik-main.yml"
+    content     = local.traefik_yaml
+  }
+
+  provisioner "remote-exec" {
+    inline = [
+      <<-EOT
+      #!/bin/bash
+      set -euo pipefail
+      sudo test -s /root/.dokploy-api-key
+      API_KEY=$(sudo cat /root/.dokploy-api-key)
+
+      jq -Rn --rawfile yaml /home/symbionic_dokploy_user/.dokploy-traefik-main.yml \
+        '{json: {traefikConfig: $yaml}}' \
+        > /home/symbionic_dokploy_user/.dokploy-traefik-main.json
+
+      curl -sf -X POST "http://localhost:3000/api/trpc/settings.updateTraefikConfig" \
+        -H 'Content-Type: application/json' \
+        -H "x-api-key: $API_KEY" \
+        --data @/home/symbionic_dokploy_user/.dokploy-traefik-main.json
+
+      rm -f /home/symbionic_dokploy_user/.dokploy-traefik-main.yml \
+            /home/symbionic_dokploy_user/.dokploy-traefik-main.json
+      EOT
+    ]
+  }
+}
+
 # Configure Dokploy's Traefik env to use DNS-01 with the linode lego provider.
 # Read-merge-write so we don't clobber any other env keys Dokploy or the user
 # has set in the dashboard. SSH + curl to localhost (not the public dashboard
 # URL) so the call doesn't depend on a valid TLS cert — which is what we're
 # trying to issue.
 resource "null_resource" "configure" {
-  depends_on = [linode_token.dns]
+  depends_on = [linode_token.dns, null_resource.configure_main]
 
   triggers = {
     instance_ip = var.instance_ip
@@ -111,6 +203,72 @@ resource "null_resource" "configure" {
       # Clean up: token never persists longer than one POST cycle on disk
       shred -u /home/symbionic_dokploy_user/.dokploy-traefik-dns01.env /home/symbionic_dokploy_user/.dokploy-traefik-dns01.json 2>/dev/null \
         || rm -f /home/symbionic_dokploy_user/.dokploy-traefik-dns01.env /home/symbionic_dokploy_user/.dokploy-traefik-dns01.json
+      EOT
+    ]
+  }
+}
+
+locals {
+  wildcard_dynamic_yaml = <<-YAML
+    tls:
+      stores:
+        default:
+          defaultGeneratedCert:
+            resolver: letsencrypt
+            domain:
+              main: symbionic.tech
+              sans:
+                - "*.symbionic.tech"
+  YAML
+}
+
+# Push Traefik dynamic config that requests a single wildcard cert via the
+# default TLS store. Mirrors the env-push pattern above: SSH + tRPC against
+# localhost so we don't depend on a valid public cert. Read-merge semantics
+# aren't needed here — this YAML is wholly owned by Terraform.
+resource "null_resource" "configure_dynamic" {
+  depends_on = [null_resource.configure]
+
+  triggers = {
+    instance_ip = var.instance_ip
+    config_hash = sha256("/etc/dokploy/traefik/dynamic/wildcard-tls.yml:${local.wildcard_dynamic_yaml}")
+  }
+
+  connection {
+    type        = "ssh"
+    host        = var.instance_ip
+    user        = "symbionic_dokploy_user"
+    private_key = file("${path.root}/id_ed25519")
+  }
+
+  provisioner "file" {
+    destination = "/home/symbionic_dokploy_user/.dokploy-traefik-dynamic.yml"
+    content     = local.wildcard_dynamic_yaml
+  }
+
+  provisioner "remote-exec" {
+    inline = [
+      <<-EOT
+      #!/bin/bash
+      set -euo pipefail
+      sudo test -s /root/.dokploy-api-key
+      API_KEY=$(sudo cat /root/.dokploy-api-key)
+
+      # settings.updateTraefikFile's writeTraefikConfigInPath does NOT prepend
+      # MAIN_TRAEFIK_PATH and swallows errors in try/catch — so the path must be
+      # absolute. /etc/dokploy/traefik/dynamic/ is bind-mounted into the dokploy
+      # container and watched by Traefik's file provider.
+      jq -Rn --rawfile yaml /home/symbionic_dokploy_user/.dokploy-traefik-dynamic.yml \
+        '{json: {path: "/etc/dokploy/traefik/dynamic/wildcard-tls.yml", traefikConfig: $yaml}}' \
+        > /home/symbionic_dokploy_user/.dokploy-traefik-dynamic.json
+
+      curl -sf -X POST "http://localhost:3000/api/trpc/settings.updateTraefikFile" \
+        -H 'Content-Type: application/json' \
+        -H "x-api-key: $API_KEY" \
+        --data @/home/symbionic_dokploy_user/.dokploy-traefik-dynamic.json
+
+      rm -f /home/symbionic_dokploy_user/.dokploy-traefik-dynamic.yml \
+            /home/symbionic_dokploy_user/.dokploy-traefik-dynamic.json
       EOT
     ]
   }

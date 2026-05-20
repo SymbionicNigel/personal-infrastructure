@@ -3,7 +3,7 @@ output "project_id" {
   description = "ID of the primary Dokploy project"
 }
 
-output "janus_application_id" {
-  value       = dokploy_application.janus.id
-  description = "ID of the janus (whoami) smoke-test application"
+output "compose_id" {
+  value       = dokploy_compose.stack.id
+  description = "ID of the deployed compose stack (contains all services)"
 }

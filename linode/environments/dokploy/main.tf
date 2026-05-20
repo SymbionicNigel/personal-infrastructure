@@ -4,11 +4,34 @@ terraform {
       source  = "j0bIT/dokploy"
       version = "0.3.0"
     }
+    dotenv = {
+      source  = "germanbrew/dotenv"
+      version = "~> 1.2"
+    }
+    http = {
+      source  = "hashicorp/http"
+      version = "~> 3.4"
+    }
   }
+
+  # Backend configuration is supplied at init time via
+  # `terraform init -backend-config=backend.hcl` (see dokploy.sh).
+  backend "s3" {}
+}
+
+data "dotenv" "compose" {
+  filename = "${path.root}/../../../compose/.env.prod"
+}
+
+locals {
+  hostname_tld = data.dotenv.compose.entries["HOSTNAME_TLD"]
+  compose_content = templatefile("${path.root}/../../../compose/docker-compose.yml", {
+    HOSTNAME_TLD = local.hostname_tld
+  })
 }
 
 provider "dokploy" {
-  host    = "https://vulcan.${var.HOSTNAME_TLD}/api"
+  host    = "https://vulcan.${local.hostname_tld}/api"
   api_key = var.DOKPLOY_API_KEY
 }
 
@@ -17,20 +40,36 @@ resource "dokploy_project" "main" {
   description = "Primary services managed by Terraform"
 }
 
-resource "dokploy_application" "janus" {
-  project_id = dokploy_project.main.id
-  name       = "janus"
-  app_name   = "janus"
+data "http" "project_one" {
+  # tRPC HTTP GET expects input as a urlencoded superjson envelope.
+  url    = "https://vulcan.${local.hostname_tld}/api/trpc/project.one?input=${urlencode(jsonencode({ json = { projectId = dokploy_project.main.id } }))}"
+  method = "GET"
+  request_headers = {
+    "x-api-key"    = var.DOKPLOY_API_KEY
+    "Content-Type" = "application/json"
+  }
 
-  source_type  = "docker"
-  docker_image = "traefik/whoami:latest"
+  lifecycle {
+    postcondition {
+      condition     = self.status_code == 200
+      error_message = "project.one returned ${self.status_code}: ${self.response_body}"
+    }
+  }
 }
 
-resource "dokploy_domain" "janus" {
-  application_id   = dokploy_application.janus.id
-  host             = "janus.${var.HOSTNAME_TLD}"
-  https            = true
-  certificate_type = "letsencrypt"
-  port             = 80
-  path             = "/"
+locals {
+  # Response is wrapped by the superjson transformer: result.data.json.<payload>
+  project_envs = jsondecode(data.http.project_one.response_body).result.data.json.environments
+  production_env_id = one([
+    for env in local.project_envs : env.environmentId if env.name == "production"
+  ])
+}
+
+resource "dokploy_compose" "stack" {
+  project_id           = dokploy_project.main.id
+  environment_id       = local.production_env_id
+  name                 = "main-application-stack"
+  source_type          = "raw"
+  compose_file_content = local.compose_content
+  deploy_on_create     = true
 }

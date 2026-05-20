@@ -1,0 +1,38 @@
+# Base compose: prod-shaped, the single source of truth for service
+# definitions across both environments.
+#
+#   Production: consumed by Dokploy via `dokploy_compose` in
+#     linode/environments/dokploy/main.tf. Terraform inlines this file
+#     via templatefile() and substitutes the HOSTNAME_TLD value at apply
+#     time. Dokploy's bundled Traefik picks up the labels below and
+#     routes accordingly.
+#
+#   Local: `docker compose up` auto-loads docker-compose.override.yml
+#     alongside this file. The override adds `ports:` per service so
+#     each is reachable at http://localhost:<port>. There is no local
+#     Traefik; the labels below are metadata only when run locally.
+#
+# To add a service:
+#   1. Append a service block following the `janus` pattern.
+#   2. Add Traefik labels (hardcoded prod values; only the HOSTNAME_TLD
+#      value is interpolated).
+#   3. In docker-compose.override.yml, add a `ports:` mapping so the
+#      service is reachable locally.
+
+networks:
+  dokploy-network:
+    external: true
+    name: dokploy-network
+
+services:
+  janus:
+    image: traefik/whoami:latest
+    labels:
+      traefik.enable: "true"
+      traefik.http.routers.janus.entrypoints: "websecure"
+      traefik.http.routers.janus.rule: "Host(`janus.${HOSTNAME_TLD}`)"
+      traefik.http.routers.janus.tls: "true"
+      traefik.http.routers.janus.tls.certresolver: "letsencrypt"
+      traefik.http.services.janus.loadbalancer.server.port: "80"
+    networks:
+      - dokploy-network
