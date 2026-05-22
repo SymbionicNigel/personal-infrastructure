@@ -33,7 +33,7 @@ add_or_merge_to_chezmoi() {
 }
 
 terraform init -backend-config=backend.hcl
-terraform apply -input=false -auto-approve
+terraform apply -input=false -auto-approve -replace='module.dokploy_postgres_backup.null_resource.configure_dokploy_pg_backup'
 
 # Make `ssh dokploy-prod` work for this user by adding a one-line Include to
 # ~/.ssh/config that points at the terraform-generated dokploy.sshconfig.

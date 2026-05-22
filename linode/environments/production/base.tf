@@ -151,6 +151,17 @@ resource "linode_object_storage_bucket" "infra_backups" {
       days = 7
     }
   }
+
+  # Prune daily dokploy-postgres dumps past 30 days. Scoped by prefix so it
+  # only affects this module's objects, not acme.json.gpg.
+  lifecycle_rule {
+    prefix  = "dokploy-postgres/"
+    enabled = true
+
+    expiration {
+      days = 30
+    }
+  }
 }
 
 # SSH config snippet for VS Code Remote-SSH and ad-hoc `ssh dokploy-prod`.
@@ -188,6 +199,21 @@ module "acme_backup" {
   gpg_recipient        = var.GPG_RECIPIENT
   instance_ip          = module.dokploy-instance.instance_ip
   key_rotation_trigger = time_rotating.infra_backups_key.rotation_rfc3339
+}
+
+# Encrypted daily snapshot of Dokploy's internal postgres. Reuses /root/.s3cfg
+# and the imported GPG public key pushed by module.acme_backup — the
+# depends_on makes that ordering explicit so a fresh apply can't schedule
+# the backup unit before its prerequisites land on the host.
+module "dokploy_postgres_backup" {
+  source = "../../modules/dokploy-postgres-backup"
+
+  instance_ip   = module.dokploy-instance.instance_ip
+  bucket_name   = linode_object_storage_bucket.infra_backups.label
+  endpoint      = linode_object_storage_bucket.infra_backups.s3_endpoint
+  gpg_recipient = var.GPG_RECIPIENT
+
+  depends_on = [module.acme_backup]
 }
 
 # TODO: Add a GitLab/GitHub provider resource to manage the chezmoi generic package artifact in the self-hosted GitLab instance (enki).

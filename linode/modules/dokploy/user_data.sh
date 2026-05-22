@@ -72,10 +72,10 @@ set_ssh_config "UsePAM" "no"
 # Restart SSH to apply changes
 systemctl restart sshd
 
-# Configure timezone data
-echo "tzdata tzdata/Areas select America" | debconf-set-selections
-echo "tzdata tzdata/Zones/America select New_York" | debconf-set-selections
-dpkg-reconfigure -f noninteractive tzdata
+# Configure timezone. timedatectl is the reliable path on Ubuntu 22.04 under
+# noninteractive cloud-init — the debconf+dpkg-reconfigure dance silently
+# no-ops here, leaving the host on Etc/UTC.
+timedatectl set-timezone America/New_York
 
 # Configure hostname
 hostnamectl set-hostname "dokploy-main.${HOSTNAME_TLD}"

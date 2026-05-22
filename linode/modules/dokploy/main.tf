@@ -21,15 +21,6 @@ resource "linode_sshkey" "dokploy_linode_ssh" {
   ssh_key = chomp(file("${path.root}/id_ed25519.pub"))
 }
 
-resource "terraform_data" "user_data_hash" {
-  input = sha256(templatefile("${path.module}/user_data.sh", {
-    HOSTNAME_TLD           = var.HOSTNAME_TLD
-    DOKPLOY_ADMIN_EMAIL    = var.DOKPLOY_ADMIN_EMAIL
-    DOKPLOY_ADMIN_PASSWORD = var.DOKPLOY_ADMIN_PASSWORD
-    DOKPLOY_VERSION        = var.DOKPLOY_VERSION
-  }))
-}
-
 resource "linode_instance" "dokploy_main" {
   booted           = true
   watchdog_enabled = true
@@ -89,6 +80,6 @@ resource "linode_instance" "dokploy_main" {
   }
 
   lifecycle {
-    replace_triggered_by = [terraform_data.user_data_hash]
+    ignore_changes = [metadata]
   }
 }
