@@ -41,8 +41,10 @@ cd linode/environments/production && bash production.sh
 
 Stands up everything the host needs to exist before Dokploy can be talked
 to as a Terraform provider: the Linode instance, firewall, DNS zone,
-wildcard records, ACME DNS-01 config, and the encrypted `acme.json` backup
-job. DNS-01 is configured up-front (rather than relying on Dokploy's
+wildcard records, ACME DNS-01 config, the encrypted `acme.json` backup
+job, and a daily encrypted `pg_dump` of `dokploy-postgres` (restore is
+operator-driven; see [modules/dokploy-postgres-backup/RESTORE.md](./modules/dokploy-postgres-backup/RESTORE.md)).
+DNS-01 is configured up-front (rather than relying on Dokploy's
 default HTTP-01) so the dashboard's first cert issuance and any future
 wildcard certs don't depend on port-80 reachability or DNS propagation
 ordering.

@@ -48,3 +48,71 @@ Required CLI packages and initializing commands:
     - `linode-cli configure --token`
 - [pnpm](https://pnpm.io/) — frontend package manager
 - node
+
+## Future Decisions
+
+Topics noted here are not yet implemented. Each is at the "decided to
+defer, not decided how" stage; resolve before the relevant service or
+demand makes it urgent.
+
+### Remote access topology (Tailscale / Cloudflare Tunnel)
+
+Today the apply host SSHes to the Dokploy instance via its raw public
+IPv4, embedded in a generated `dokploy.sshconfig`. The Dokploy dashboard
+is also reachable on `vulcan.<HOSTNAME_TLD>:443` publicly, gated only by
+Dokploy's own login. Adding Tailscale (or Cloudflare Tunnel) would let
+the firewall drop port 22 from the world, move the dashboard off the
+public internet, and remove the "raw IP in checked-in config" liability.
+Worth doing before any user-facing service exposes a real attack surface.
+
+### Observability baseline
+
+There is no log aggregation, metrics scraping, or external uptime
+checking. `docker logs --tail` is the only debugging tool today. Plausible
+first cut: Loki + Grafana (deployed as a Dokploy compose stack) for log
+storage and dashboards, plus `blackbox_exporter` (or an external service)
+hitting wildcard subdomains for uptime. Pick before the second service
+ships, because correlating two services with no log store is painful.
+
+### Persistent data tier
+
+Most future services will need a SQL store. Likely shape: a single
+host-resident Postgres (separate from `dokploy-postgres`), one schema or
+database per service, shared backups. Per-service Postgres containers
+multiply the backup matrix without much isolation benefit on a
+single-host deployment. Decide concretely (instance type, version pin,
+backup strategy) before the first DB-backed service lands.
+
+### Apex redirect + catch-all 404 router
+
+`symbionic.tech` (no subdomain) currently has no defined behavior. Once a
+user-facing service ships, we'll want either a redirect to a canonical
+host (e.g., `www.symbionic.tech`) or a static landing page. A catch-all
+router for undefined subdomains serving a 404 is similarly cosmetic but
+worth doing once UI work begins.
+
+### Billing alerts
+
+Linode emits cost data but doesn't notify on spend spikes by default.
+A budget alert configured in the Linode dashboard (or via the API) is a
+small thing to wire up before anything that can scale costs unexpectedly
+goes live.
+
+### CDN / WAF in front
+
+If/when a service has public traffic worth fronting, putting Cloudflare
+(or an alternative — explicitly looking for non-Cloudflare options
+when this comes up) between the world and Traefik buys DDoS smoothing
+and caching. Today it would only add a moving part. Open question:
+which provider; reluctance to add Cloudflare specifically without
+evaluating alternatives.
+
+### Dokploy version upgrade workflow
+
+`DOKPLOY_VERSION` is pinned with a default in the production
+environment's variables, so rebuilds are reproducible. Bumping it
+requires editing the default and re-applying — there is no test of the
+new version against the current compose stack before promotion. Fine
+while upgrades are rare; codify a "stage on a throwaway env, then
+promote" flow if the cadence ever picks up or a Dokploy release breaks
+a service.
