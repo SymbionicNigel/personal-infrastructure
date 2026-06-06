@@ -1,0 +1,100 @@
+# One deploy at a time per ref. Newer pushes cancel queued (but not
+# in-progress) runs to avoid stale image tags overwriting fresher ones.
+concurrency:
+  cancel-in-progress: false
+  group: astarte-${{ github.ref }}
+
+jobs:
+  build-and-push:
+    needs: test
+    outputs:
+      image_tag: ${{ steps.tag.outputs.sha }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: tag
+        run: echo "sha=${GITHUB_SHA}" >> "$GITHUB_OUTPUT"
+
+      # GHCR image names must be lowercase; github.repository_owner
+      # preserves the original case (e.g. SymbionicNigel).
+      - id: owner
+        run: echo "lower=${GITHUB_REPOSITORY_OWNER,,}" >> "$GITHUB_OUTPUT"
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          password: ${{ secrets.GITHUB_TOKEN }}
+          registry: ghcr.io
+          username: ${{ github.actor }}
+
+      - uses: docker/build-push-action@v6
+        with:
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          context: astarte
+          push: true
+          tags: |
+            ghcr.io/${{ steps.owner.outputs.lower }}/astarte:${{ github.sha }}
+            ghcr.io/${{ steps.owner.outputs.lower }}/astarte:latest
+
+  # Terraform deploy lives in the reusable workflow so additional services
+  # share one code path and queue on the same TF-apply concurrency group.
+  # secrets: inherit exposes the repo secrets (GPG_*, BW_*) to the reusable
+  # workflow by their real names.
+  deploy:
+    needs: build-and-push
+    secrets: inherit
+    uses: ./.github/workflows/_dokploy-deploy.yml
+    with:
+      image_tag: ${{ needs.build-and-push.outputs.image_tag }}
+      service_name: astarte
+      tf_var_name: ASTARTE_IMAGE_TAG
+
+  test:
+    defaults:
+      run:
+        working-directory: astarte
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v3
+        with:
+          cache-dependency-glob: astarte/uv.lock
+          enable-cache: true
+
+      - run: uv sync --frozen
+
+      - run: uv run ruff check
+
+      - run: uv run ruff format --check
+
+      - run: uv run pytest
+
+      # Fail the build if any dep ships under a non-permissive license.
+      # The repo is Apache-2.0; copyleft (GPL/AGPL) and source-available
+      # (SSPL/BUSL) deps would create distribution conflicts.
+      - name: license audit
+        run: >
+          uv run pip-licenses --allow-only='Apache Software License;Apache
+          2.0;BSD License;ISC License (ISCL);MIT License;Mozilla Public
+          License 2.0 (MPL 2.0);Python Software Foundation License;The
+          Unlicense (Unlicense)'
+
+name: astarte
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - 'astarte/**'
+      - 'compose/docker-compose.yml'
+      - 'linode/environments/dokploy/**'
+      - '.github/workflows/astarte.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
