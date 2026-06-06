@@ -72,6 +72,28 @@ domains. Routing is driven by Traefik labels in the root `docker-compose.yml`,
 not by `dokploy_domain` resources — labels are the single source of truth
 across local and prod so the same compose file describes both.
 
+### Stage 2.5 — One-time GHCR pull credential
+
+Manual until automated (see
+[docs/plans/2026-06-04-ghcr-auth-automation.md](../docs/plans/2026-06-04-ghcr-auth-automation.md)
+for why and when to fix). The astarte image (and any future GHCR-hosted
+service) is published to a private GHCR namespace, so the Dokploy host
+needs `docker login` credentials before the first deploy will succeed.
+
+1. Generate a fine-grained PAT in GitHub
+   (Settings → Developer settings → Personal access tokens → Fine-grained):
+   - Repository access: this repo only
+   - Permissions: `Packages: Read-only`
+   - Expiration: 1 year
+2. Encrypt into `.secrets/` via chezmoi so it isn't loose:
+   `bash ./dotfile-utils/scripts/chezmoi-add-secret.sh --encrypt ./linode/environments/dokploy/.ghcr-pat`
+3. On the Dokploy host once:
+   `ssh dokploy-prod 'docker login ghcr.io -u <github-user> --password-stdin' < <decrypted .ghcr-pat path>`
+
+Survives reboots. **Will need to be redone on host rebuild** and **must
+be rotated before the PAT expires** — both are tracked as triggers in
+the follow-up plan.
+
 ## Rationale
 
 This project uses a **hybrid approach** to Terraform state management that

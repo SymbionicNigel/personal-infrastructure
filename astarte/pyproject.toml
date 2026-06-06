@@ -1,0 +1,79 @@
+[project]
+name = "astarte"
+version = "0.1.0"
+description = "Public-facing FastAPI backend."
+readme = "README.md"
+license = "Apache-2.0"
+authors = [{ name = "SymbionicNigel" }]
+requires-python = ">=3.13"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.32",
+]
+
+[project.urls]
+Repository = "https://github.com/SymbionicNigel/personal-infrastructure"
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3",
+    "httpx>=0.27",
+    "pip-licenses>=5.0",
+    "ruff>=0.8",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/astarte"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+
+[tool.ruff.lint]
+select = [
+    "ANN",  # flake8-annotations (require type annotations)
+    "ARG",  # flake8-unused-arguments
+    "B",    # flake8-bugbear (likely bugs)
+    "C4",   # flake8-comprehensions
+    "D",    # pydocstyle (docstring style)
+    "DTZ",  # flake8-datetimez (timezone-aware datetimes)
+    "E",    # pycodestyle errors
+    "ERA",  # eradicate (commented-out code) -- candidate for removal if noisy
+    "F",    # pyflakes
+    "FBT",  # flake8-boolean-trap -- candidate for removal if too strict
+    "G",    # flake8-logging-format
+    "I",    # isort (import ordering)
+    "N",    # pep8-naming
+    "PIE",  # flake8-pie (miscellaneous)
+    "PT",   # flake8-pytest-style
+    "PTH",  # flake8-use-pathlib
+    "RET",  # flake8-return (return-statement cleanup)
+    "RUF",  # ruff-specific
+    "S",    # flake8-bandit (security)
+    "SIM",  # flake8-simplify
+    "T20",  # flake8-print (no print() in service code)
+    "TCH",  # flake8-type-checking (TYPE_CHECKING import discipline)
+    "TRY",  # tryceratops (exception hygiene)
+    "UP",   # pyupgrade (modernize syntax)
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = [
+    "ANN",   # type annotations are less critical in tests
+    "D",     # docstrings are noise in tests
+    "S101",  # assert is the entire point of pytest
+]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.lint.flake8-annotations]
+mypy-init-return = true
+suppress-dummy-args = true

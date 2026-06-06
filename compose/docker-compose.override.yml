@@ -9,8 +9,12 @@
 #   - Flip dokploy-network to non-external so Compose creates it
 #     locally (in prod, Dokploy creates it before stack deploy).
 #
-# To wire up a new service locally, add a `ports:` mapping here that
-# matches the container port in the service's loadbalancer label.
+# To wire up a new service locally:
+#   - Image-only services (e.g. janus): add a `ports:` mapping that
+#     matches the container port in the service's loadbalancer label.
+#   - Source-built services (e.g. astarte): add `build` (with the
+#     Dockerfile's dev target), a local `image:` tag, `ports:`, and a
+#     `volumes:` source bind mount for live reload.
 
 networks:
   dokploy-network:
@@ -18,6 +22,19 @@ networks:
     name: dokploy-network
 
 services:
+  astarte:
+    build:
+      context: ../astarte
+      target: dev
+    image: astarte:dev
+    ports:
+      - '8000:8000'
+    volumes:
+      # Host source bind-mounted over the editable install path so
+      # `uvicorn --reload` (set as the dev CMD) picks up edits without
+      # rebuilding the image.
+      - ../astarte/src:/app/src
+
   janus:
     ports:
-      - "8080:80"
+      - '8080:80'
