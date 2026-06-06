@@ -1,12 +1,22 @@
-# Dev Setup
+# personal-infrastructure
+
+This repository is the maintainer's personal infrastructure configuration.
+It is published as a reference for anyone learning the same stack
+(Linode + Dokploy + Terraform + chezmoi + Traefik), **not** as a
+maintained product. Patterns are tuned for one specific deployment
+target; copying the repo wholesale will not produce a working stack.
+See [NOTICE](./NOTICE) for the full disclaimer and [LICENSE](./LICENSE)
+(Apache-2.0) for terms.
+
+## Dev Setup
 
 1. Need to add subdomains to `/etc/hosts` on Linux and `C:\Windows\System32\drivers\etc\hosts` on Windows so that subdomain testing will work
+   - astarte.localhost - FastAPI backend (Phoenician goddess of beauty; the public-facing presence of the Phoenician pantheon)
    - enki.localhost - gitlab
    - hendrix.localhost - traefik
    - janus.localhost - whoami (Roman two-faced god of beginnings, doorways, and transitions)
    - vulcan.localhost - dokploy console - Roman god of the forge, craftsmen, and builders
    - IN NEED OF SERVICE
-     - astarte — Phoenician goddess of beauty; the public-facing presence of the Phoenician pantheon
      - mimir - Norse god of knowledge.  Good for observation or knowledgebase
      - iris - Greek messenger goddess, rainbow personified, the visible link between gods and mortals
      - selene - Greek moon goddess; the visible face of the night sky
@@ -31,7 +41,8 @@ handles routing and TLS; application services are defined in the root
 
 1. [Linode](./linode/README.md) - Terraform based IAC
 2. [Solid](./solid/SOLIDSTART_README.md) - SolidStart web frontend
-3. [Scripts](./scripts/README.md) - Scripts for building and developing in personal-infrastructure
+3. [Astarte](./astarte/README.md) - FastAPI backend (Python, uv-managed)
+4. [Scripts](./scripts/README.md) - Scripts for building and developing in personal-infrastructure
 
 Required CLI packages and initializing commands:
 
@@ -47,6 +58,7 @@ Required CLI packages and initializing commands:
 - [Linode-Cli](https://github.com/linode/linode-cli)
     - `linode-cli configure --token`
 - [pnpm](https://pnpm.io/) — frontend package manager
+- [uv](https://docs.astral.sh/uv/) — Python package + project manager (for `astarte/` and future Python services)
 - node
 
 ## Future Decisions

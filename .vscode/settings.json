@@ -12,4 +12,6 @@
         ".env.*": "dotenv",
         ".env": "dotenv"
     },
+    "better-todo-tree.tree.disableCompactFolders": true,
+    "better-todo-tree.tree.showCountsInTree": true,
 }
