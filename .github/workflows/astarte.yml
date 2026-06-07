@@ -44,6 +44,7 @@ jobs:
   # secrets: inherit exposes the repo secrets (GPG_*, BW_*) to the reusable
   # workflow by their real names.
   deploy:
+    if: github.ref == 'refs/heads/master'
     needs: build-and-push
     secrets: inherit
     uses: ./.github/workflows/_dokploy-deploy.yml
@@ -87,7 +88,9 @@ name: astarte
 
 on:
   push:
-    branches: [master]
+    # TEMPORARY (revert before FF-merge): NK/astarte-python-service added so the
+    # feature branch triggers test + build-and-push during deploy validation.
+    branches: [master, NK/astarte-python-service]
     paths:
       - 'astarte/**'
       - 'compose/docker-compose.yml'
