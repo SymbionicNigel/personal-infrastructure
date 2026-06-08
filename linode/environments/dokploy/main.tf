@@ -25,7 +25,7 @@ data "dotenv" "compose" {
 
 locals {
   hostname_tld = data.dotenv.compose.entries["HOSTNAME_TLD"]
-  ghcr_owner   = data.dotenv.compose.entries["GHCR_OWNER"]
+  ghcr_owner   = var.GHCR_OWNER
   compose_content = templatefile("${path.root}/../../../compose/docker-compose.yml", {
     HOSTNAME_TLD      = local.hostname_tld
     GHCR_OWNER        = local.ghcr_owner

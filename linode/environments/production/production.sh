@@ -32,8 +32,22 @@ add_or_merge_to_chezmoi() {
     fi
 }
 
+# Repo owner is the GHCR login username for the host's docker login. CI provides
+# it; locally fall back to the origin remote via gh. (GHCR usernames are
+# case-insensitive, so no lowercasing needed here.)
+OWNER="${GITHUB_REPOSITORY_OWNER:-$(gh repo view --json owner --jq '.owner.login')}"
+: "${OWNER:?could not determine repo owner (set GITHUB_REPOSITORY_OWNER or run gh auth login)}"
+export TF_VAR_GHCR_USER="$OWNER"
+
 terraform init -backend-config=backend.hcl
 terraform apply -input=false -auto-approve
+
+# Remaining steps are local-developer bootstrap (SSH config Include, handing the
+# provisioned API key to the dokploy stage, syncing it into chezmoi). CI runners
+# set CI=true and are done after the apply.
+if [ -n "${CI:-}" ]; then
+    exit 0
+fi
 
 # Make `ssh dokploy-prod` work for this user by adding a one-line Include to
 # ~/.ssh/config that points at the terraform-generated dokploy.sshconfig.

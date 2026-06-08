@@ -41,17 +41,21 @@ jobs:
 
   # Terraform deploy lives in the reusable workflow so additional services
   # share one code path and queue on the same TF-apply concurrency group.
-  # secrets: inherit exposes the repo secrets (GPG_*, BW_*) to the reusable
-  # workflow by their real names.
+  # secrets: inherit exposes the repo secrets (GPG_*, BW_*, SUBMODULES_PAT) to
+  # the reusable workflow by their real names.
   deploy:
-    if: github.ref == 'refs/heads/master'
+    # TEMPORARY (revert to master-only before FF-merge): feature branch added so
+    # the deploy chain runs during Stage 2 validation.
+    if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/NK/astarte-python-service'
     needs: build-and-push
     secrets: inherit
-    uses: ./.github/workflows/_dokploy-deploy.yml
+    uses: ./.github/workflows/_terraform-apply.yml
     with:
       image_tag: ${{ needs.build-and-push.outputs.image_tag }}
-      service_name: astarte
+      label: astarte
+      script: dokploy.sh
       tf_var_name: ASTARTE_IMAGE_TAG
+      working_directory: linode/environments/dokploy
 
   test:
     defaults:

@@ -1,0 +1,29 @@
+jobs:
+  apply:
+    secrets: inherit
+    uses: ./.github/workflows/_terraform-apply.yml
+    with:
+      label: production
+      script: production.sh
+      working_directory: linode/environments/production
+
+name: infra
+
+# Apply the production environment (provisions the instance, host GHCR login,
+# domain bindings, backups) on infra or secret changes. A `.secrets` change
+# surfaces here as a submodule-pointer bump in the parent commit.
+on:
+  push:
+    # TEMPORARY (revert to master-only before FF-merge): feature branch added so
+    # the production infra apply runs during Stage 2 validation.
+    branches: [master, NK/astarte-python-service]
+    paths:
+      - .github/workflows/_terraform-apply.yml
+      - .github/workflows/infra.yml
+      - .secrets
+      - linode/environments/production/**
+      - linode/modules/**
+  workflow_dispatch:
+
+permissions:
+  contents: read

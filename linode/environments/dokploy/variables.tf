@@ -11,3 +11,9 @@ variable "ASTARTE_IMAGE_TAG" {
   description = "Image tag (git SHA in CI, 'latest' for manual applies) for the astarte image on GHCR."
   default     = "latest"
 }
+
+variable "GHCR_OWNER" {
+  type        = string
+  nullable    = false
+  description = "GHCR namespace (lowercased repo owner) for service image paths. Supplied by dokploy.sh from the repo owner."
+}
