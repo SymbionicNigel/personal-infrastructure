@@ -6,10 +6,11 @@
 # workflow_dispatch):
 #   GPG_PRIVATE_KEY  - decrypt chezmoi-managed secrets (key has no passphrase)
 #   BW_CLIENTID, BW_CLIENTSECRET, BW_PASSWORD - non-interactive Bitwarden unlock
-#   SUBMODULES_PAT  - read the private .secrets submodule
+#   CI_PAT  - read the private .secrets submodule (also writes repo Variables elsewhere)
 
-# Serialize every linode TF apply so concurrent runs (service deploys + infra)
-# queue rather than race the shared host / S3 state locks.
+# Serialize every linode TF op (plan + apply) so concurrent runs (service
+# deploys, infra, PR plans) queue rather than race the shared host / S3 state
+# locks. plan_only=true runs `terraform plan` (read-only) instead of apply.
 concurrency:
   cancel-in-progress: false
   group: linode-tf-apply
@@ -18,7 +19,11 @@ jobs:
   apply:
     runs-on: ubuntu-latest
     steps:
+      # Empty ref = the triggering ref. workflow_run callers pin the built SHA
+      # so the checked-out compose/terraform matches the image being deployed.
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
 
       # Submodules include .secrets/ (encrypted via chezmoi/GPG, PRIVATE repo)
       # and dotfile-utils/ (install + bitwarden scripts). .gitmodules uses SSH
@@ -26,10 +31,10 @@ jobs:
       # private .secrets repo — so rewrite SSH->HTTPS with a PAT that can read
       # both, then init recursively.
       - env:
-          SUBMODULES_PAT: ${{ secrets.SUBMODULES_PAT }}
+          CI_PAT: ${{ secrets.CI_PAT }}
         name: Checkout submodules
         run: |
-          git config --global url."https://x-access-token:${SUBMODULES_PAT}@github.com/".insteadOf "git@github.com:"
+          git config --global url."https://x-access-token:${CI_PAT}@github.com/".insteadOf "git@github.com:"
           git submodule sync --recursive
           git submodule update --init --recursive
 
@@ -61,10 +66,16 @@ jobs:
       # the sourced script) is consumed in-process. --no-tty makes any prompt
       # fail fast instead of hanging. Materializes the env's .env, backend.hcl,
       # id_ed25519, etc.
+      #
+      # GH_TOKEN must be a *user* PAT (CI_PAT): the compose-env chezmoi template
+      # renders GHCR_OWNER via `gh api user`, whose REST /user endpoint 403s for
+      # GITHUB_TOKEN (an installation token). Without a usable token that
+      # `output` call exits non-zero and chezmoi aborts the entire apply.
       - env:
           BW_CLIENTID: ${{ secrets.BW_CLIENTID }}
           BW_CLIENTSECRET: ${{ secrets.BW_CLIENTSECRET }}
           BW_PASSWORD: ${{ secrets.BW_PASSWORD }}
+          GH_TOKEN: ${{ secrets.CI_PAT }}
         name: chezmoi apply (Bitwarden-unlocked)
         run: |
           source dotfile-utils/scripts/source_bitwarden_session.sh
@@ -75,19 +86,23 @@ jobs:
           terraform_wrapper: false
 
       # Run the env's wrapper script (sources its own .env + runs terraform).
-      # For service deploys, inject the image tag into the caller-named TF_VAR_*.
+      # For service deploys, the orchestrator passes every <SVC>_IMAGE_TAG as a
+      # TF_VAR_* assignment via tf_vars; export each before the script.
       # CI=true (set by Actions) tells scripts to skip local-only bootstrap.
       - env:
           BW_CLIENTID: ${{ secrets.BW_CLIENTID }}
           BW_CLIENTSECRET: ${{ secrets.BW_CLIENTSECRET }}
           BW_PASSWORD: ${{ secrets.BW_PASSWORD }}
-          IMAGE_TAG: ${{ inputs.image_tag }}
           SCRIPT: ${{ inputs.script }}
-          TF_VAR_NAME: ${{ inputs.tf_var_name }}
-        name: terraform apply (${{ inputs.script }})
+          TF_PLAN_ONLY: ${{ inputs.plan_only }}
+          TF_VARS: ${{ inputs.tf_vars }}
+        name: terraform ${{ inputs.plan_only && 'plan' || 'apply' }} (${{ inputs.script }})
         run: |
-          if [ -n "$TF_VAR_NAME" ]; then
-            export "TF_VAR_${TF_VAR_NAME}=${IMAGE_TAG}"
+          if [ -n "$TF_VARS" ]; then
+            while IFS= read -r line; do
+              [ -n "$line" ] || continue
+              export "${line%%=*}=${line#*=}"
+            done <<< "$TF_VARS"
           fi
           bash "$SCRIPT"
         working-directory: ${{ inputs.working_directory }}
@@ -97,22 +112,27 @@ name: _terraform-apply
 on:
   workflow_call:
     inputs:
-      image_tag:
-        default: ""
-        description: Image tag (commit SHA) injected into tf_var_name. Service deploys only.
-        required: false
-        type: string
       label:
         description: Identifier for logs/run-name (e.g. astarte, production).
         required: true
+        type: string
+      plan_only:
+        default: false
+        description: Run `terraform plan` (read-only) instead of apply.
+        required: false
+        type: boolean
+      ref:
+        default: ""
+        description: Git ref/SHA to check out. Empty = the triggering ref.
+        required: false
         type: string
       script:
         description: Wrapper script run inside working_directory (e.g. dokploy.sh).
         required: true
         type: string
-      tf_var_name:
+      tf_vars:
         default: ""
-        description: TF_VAR_* name set to image_tag (e.g. ASTARTE_IMAGE_TAG). Service deploys only.
+        description: Newline-separated TF_VAR_* assignments (KEY=VALUE per line).
         required: false
         type: string
       working_directory:
@@ -121,22 +141,27 @@ on:
         type: string
   workflow_dispatch:
     inputs:
-      image_tag:
-        default: ""
-        description: Image tag (commit SHA) injected into tf_var_name. Service deploys only.
-        required: false
-        type: string
       label:
         description: Identifier for logs/run-name (e.g. astarte, production).
         required: true
+        type: string
+      plan_only:
+        default: false
+        description: Run `terraform plan` (read-only) instead of apply.
+        required: false
+        type: boolean
+      ref:
+        default: ""
+        description: Git ref/SHA to check out. Empty = the triggering ref.
+        required: false
         type: string
       script:
         description: Wrapper script run inside working_directory (e.g. dokploy.sh).
         required: true
         type: string
-      tf_var_name:
+      tf_vars:
         default: ""
-        description: TF_VAR_* name set to image_tag (e.g. ASTARTE_IMAGE_TAG). Service deploys only.
+        description: Newline-separated TF_VAR_* assignments (KEY=VALUE per line).
         required: false
         type: string
       working_directory:
@@ -147,4 +172,4 @@ on:
 permissions:
   contents: read
 
-run-name: apply ${{ inputs.label }} ${{ inputs.image_tag }}
+run-name: ${{ inputs.plan_only && 'plan' || 'apply' }} ${{ inputs.label }}

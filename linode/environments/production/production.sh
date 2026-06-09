@@ -40,6 +40,13 @@ OWNER="${GITHUB_REPOSITORY_OWNER:-$(gh repo view --json owner --jq '.owner.login
 export TF_VAR_GHCR_USER="$OWNER"
 
 terraform init -backend-config=backend.hcl
+
+# TF_PLAN_ONLY=true (set by the reusable workflow on PR validation) runs a
+# read-only plan and skips both the apply and the local bootstrap below.
+if [ "${TF_PLAN_ONLY:-false}" = "true" ]; then
+    terraform plan -input=false
+    exit 0
+fi
 terraform apply -input=false -auto-approve
 
 # Remaining steps are local-developer bootstrap (SSH config Include, handing the
@@ -78,7 +85,6 @@ API_KEY=$(cat "$API_KEY_FILE")
 # Hand off to the dokploy stage by generating its .env
 cat > "../dokploy/.env" << EOF
 TF_VAR_DOKPLOY_API_KEY=$API_KEY
-TF_VAR_HOSTNAME_TLD=$TF_VAR_HOSTNAME_TLD
 AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID
 AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY
 EOF

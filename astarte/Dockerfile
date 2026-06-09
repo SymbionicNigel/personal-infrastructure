@@ -24,21 +24,26 @@ CMD ["uv", "run", "uvicorn", "astarte.main:app", \
      "--host", "0.0.0.0", "--port", "8000", \
      "--reload", "--reload-dir", "/app/src"]
 
-# Builder target: produce a wheel. Discarded; only the wheel travels
-# forward, so no source, uv, or build tooling ships in the published image.
+# Builder target: produce the app wheel plus a hashed requirements export from
+# uv.lock. Both travel forward; no source, uv, or build tooling ships in runtime.
 FROM uv-base AS builder
 WORKDIR /build
 ENV UV_LINK_MODE=copy \
     UV_COMPILE_BYTECODE=1
-COPY pyproject.toml README.md ./
+COPY pyproject.toml uv.lock README.md ./
 COPY src/ ./src/
-RUN uv build --wheel --out-dir /wheels
+RUN uv build --wheel --out-dir /wheels \
+ && uv export --frozen --no-dev --no-emit-project --output-file /wheels/requirements.txt
 
 # Runtime stage: slim python image with the wheel installed. No uv.
 FROM python:3.13-slim AS runtime
 WORKDIR /app
-COPY --from=builder /wheels/*.whl /tmp/
-RUN pip install --no-cache-dir /tmp/*.whl && rm /tmp/*.whl
+COPY --from=builder /wheels/ /tmp/wheels/
+# Locked+hashed deps first, then the app wheel --no-deps so pip never
+# re-resolves the pyproject ranges against PyPI.
+RUN pip install --no-cache-dir -r /tmp/wheels/requirements.txt \
+ && pip install --no-cache-dir --no-deps /tmp/wheels/*.whl \
+ && rm -rf /tmp/wheels
 
 # Non-root runtime. UID 1000 is conventional and plays well with
 # bind-mounted volumes from a typical dev host.

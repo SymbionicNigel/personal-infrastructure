@@ -17,4 +17,11 @@ OWNER="${GITHUB_REPOSITORY_OWNER:-$(gh repo view --json owner --jq '.owner.login
 export TF_VAR_GHCR_OWNER="${OWNER,,}"
 
 terraform init -backend-config=backend.hcl
+
+# TF_PLAN_ONLY=true (set by the reusable workflow on PR validation) runs a
+# read-only plan instead of mutating anything.
+if [ "${TF_PLAN_ONLY:-false}" = "true" ]; then
+  terraform plan -input=false
+  exit 0
+fi
 terraform apply -input=false -auto-approve
