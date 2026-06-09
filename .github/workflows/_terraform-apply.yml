@@ -21,7 +21,7 @@ jobs:
     steps:
       # Empty ref = the triggering ref. workflow_run callers pin the built SHA
       # so the checked-out compose/terraform matches the image being deployed.
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           ref: ${{ inputs.ref }}
 
@@ -40,7 +40,7 @@ jobs:
 
       # Key is unprotected (no passphrase), so no passphrase input is needed.
       - name: Import GPG key
-        uses: crazy-max/ghaction-import-gpg@v6
+        uses: crazy-max/ghaction-import-gpg@v7
         with:
           gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
 
@@ -81,7 +81,7 @@ jobs:
           source dotfile-utils/scripts/source_bitwarden_session.sh
           chezmoi apply --no-tty --config ./.chezmoi.toml
 
-      - uses: hashicorp/setup-terraform@v3
+      - uses: hashicorp/setup-terraform@v4
         with:
           terraform_wrapper: false
 

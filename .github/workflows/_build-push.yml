@@ -15,7 +15,7 @@ jobs:
       packages: write
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - id: meta
         name: Compute lowercased image ref
@@ -25,18 +25,18 @@ jobs:
           [ -n "$image" ] || image="${{ inputs.service }}"
           echo "image=ghcr.io/${owner}/${image,,}" >> "$GITHUB_OUTPUT"
 
-      - uses: docker/setup-buildx-action@v3
+      - uses: docker/setup-buildx-action@v4
 
       # Login only when we intend to push. PR validation builds the image to
       # catch Dockerfile/packaging breakage but pushes nothing.
       - if: ${{ inputs.push_image }}
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           password: ${{ secrets.GITHUB_TOKEN }}
           registry: ghcr.io
           username: ${{ github.actor }}
 
-      - uses: docker/build-push-action@v6
+      - uses: docker/build-push-action@v7
         with:
           cache-from: type=gha
           cache-to: type=gha,mode=max

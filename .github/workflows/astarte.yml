@@ -25,9 +25,9 @@ jobs:
         working-directory: astarte
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - uses: astral-sh/setup-uv@v3
+      - uses: astral-sh/setup-uv@v8.2.0
         with:
           cache-dependency-glob: astarte/uv.lock
           enable-cache: true
