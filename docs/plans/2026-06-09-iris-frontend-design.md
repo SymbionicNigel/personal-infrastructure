@@ -19,7 +19,7 @@ integratability, so it gets its own investigation/spec later. No DB this round.
 - **Framework:** React Router v7, framework mode (the official Remix successor;
   SSR by default + per-route `clientLoader`/`clientAction`).
 - **Build tooling:** Vite (`@react-router/dev` plugin; Rollup prod / esbuild
-  dev). No legacy bundler — no webpack, no Remix classic compiler. ESM, Node 22.
+  dev). No legacy bundler — no webpack, no Remix classic compiler. ESM, Node 24.
 - **Styling:** Panda CSS (zero-runtime, type-safe tokens/recipes via
   `panda codegen`) + Park UI (own-your-components shells over Ark UI, added via
   CLI). All deps MIT.
@@ -121,7 +121,7 @@ iris/
 ## Deploy wiring (mirrors astarte/janus exactly)
 
 1. **`iris/Dockerfile`** — three targets like `astarte/Dockerfile`:
-   - `dev`: `node:22-slim`, `pnpm install`, `react-router dev` (HMR), source
+   - `dev`: `node:24-slim`, `pnpm install`, `react-router dev` (HMR), source
      bind-mounted, EXPOSE 3000.
    - `build`: install + `pnpm build` → `build/client` + `build/server`.
    - `runtime` (default): slim node, prod deps only, non-root UID 1000,
