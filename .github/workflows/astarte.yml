@@ -5,13 +5,30 @@ concurrency:
   group: astarte-${{ github.ref }}
 
 jobs:
+  # Single required status check for branch protection. Always runs (even when
+  # test/build skipped) so it always reports, and fails only if a triggered job
+  # actually failed -- an unrelated PR (test/build skipped) passes it, a broken
+  # service PR blocks. skipped/cancelled are not failures.
+  astarte-gate:
+    if: ${{ always() }}
+    needs: [changes, test, build-and-push]
+    runs-on: ubuntu-latest
+    steps:
+      - if: ${{ contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') }}
+        run: |
+          echo "A triggered job failed: ${{ join(needs.*.result, ', ') }}"
+          exit 1
+      - run: |
+          echo "ok: ${{ join(needs.*.result, ', ') }}"
+
   # Build the image via the reusable workflow. On master it also pushes to GHCR
   # and records ASTARTE_IMAGE_TAG; deploys then flow through deploy.yml
   # (workflow_run after this build), which renders the full compose from every
   # <SVC>_IMAGE_TAG Variable. On pull_request push_image is false: the image is
   # built for validation but not pushed, and the shared Variable isn't touched.
   build-and-push:
-    needs: test
+    if: ${{ needs.changes.outputs.astarte == 'true' }}
+    needs: [changes, test]
     secrets: inherit
     uses: ./.github/workflows/_build-push.yml
     with:
@@ -19,10 +36,31 @@ jobs:
       push_image: ${{ github.event_name != 'pull_request' }}
       service: astarte
 
+  # Detect whether the service's own code/build config changed. On non-PR events
+  # the filter is skipped and defaults to true (push/dispatch always do the work).
+  # Lets the workflow trigger on every PR while the real jobs skip when astarte/
+  # is untouched -- so the required astarte-gate never deadlocks an unrelated PR
+  # (a non-reporting required check blocks merge; a skipped one does not).
+  changes:
+    outputs:
+      astarte: ${{ steps.filter.outputs.astarte || 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - id: filter
+        if: ${{ github.event_name == 'pull_request' }}
+        uses: dorny/paths-filter@v4
+        with:
+          filters: |
+            astarte:
+              - 'astarte/**'
+              - '.github/workflows/astarte.yml'
+
   test:
     defaults:
       run:
         working-directory: astarte
+    if: ${{ needs.changes.outputs.astarte == 'true' }}
+    needs: changes
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -58,13 +96,10 @@ jobs:
 name: astarte
 
 on:
-  # Only the service's own code/build config. Deploy-config paths (compose,
-  # dokploy/**) are owned by deploy.yml; a change there deploys the current
-  # image via deploy.yml directly, without a needless rebuild here.
+  # Runs on every PR so the required astarte-gate always reports; the `changes`
+  # job + per-job `if` skip the real work when astarte/ is untouched. Push stays
+  # path-filtered: master only rebuilds/pushes when the service actually changes.
   pull_request:
-    paths:
-      - 'astarte/**'
-      - '.github/workflows/astarte.yml'
   push:
     branches: [master]
     paths:
@@ -75,3 +110,4 @@ on:
 permissions:
   contents: read
   packages: write
+  pull-requests: read

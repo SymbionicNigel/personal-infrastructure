@@ -16,8 +16,33 @@ concurrency:
   group: deploy-${{ github.event_name == 'pull_request' && format('plan-{0}', github.ref) || 'apply' }}
 
 jobs:
+  # Detect whether any infra/deploy-config path changed. On non-PR events the
+  # filter is skipped and defaults to true (push/workflow_run/dispatch always
+  # apply). Lets the workflow trigger on every PR while the plan jobs skip when
+  # no infra changed -- so the required deploy-gate never deadlocks an unrelated
+  # PR (a non-reporting required check blocks merge; a skipped one does not).
+  changes:
+    outputs:
+      infra: ${{ steps.filter.outputs.infra || 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - id: filter
+        if: ${{ github.event_name == 'pull_request' }}
+        uses: dorny/paths-filter@v4
+        with:
+          filters: |
+            infra:
+              - '.github/workflows/_terraform-apply.yml'
+              - '.github/workflows/deploy.yml'
+              - '.secrets'
+              - 'compose/docker-compose.yml'
+              - 'linode/environments/dokploy/**'
+              - 'linode/environments/production/**'
+              - 'linode/modules/**'
+
   collect:
-    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
+    if: ${{ (github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success') && (github.event_name != 'pull_request' || needs.changes.outputs.infra == 'true') }}
+    needs: changes
     outputs:
       tf_vars: ${{ steps.tags.outputs.tf_vars }}
     runs-on: ubuntu-latest
@@ -34,6 +59,22 @@ jobs:
             echo "TFVARS_EOF"
           } >> "$GITHUB_OUTPUT"
 
+  # Single required status check for branch protection. Always runs (even when
+  # the plan jobs skip) so it always reports, and fails only if a triggered job
+  # actually failed -- an unrelated PR (plans skipped) passes it, a broken plan
+  # blocks. skipped/cancelled are not failures.
+  deploy-gate:
+    if: ${{ always() }}
+    needs: [changes, collect, prod, dokploy]
+    runs-on: ubuntu-latest
+    steps:
+      - if: ${{ contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') }}
+        run: |
+          echo "A triggered job failed: ${{ join(needs.*.result, ', ') }}"
+          exit 1
+      - run: |
+          echo "ok: ${{ join(needs.*.result, ', ') }}"
+
   dokploy:
     needs: [collect, prod]
     secrets: inherit
@@ -47,7 +88,8 @@ jobs:
       working_directory: linode/environments/dokploy
 
   prod:
-    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
+    if: ${{ (github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success') && (github.event_name != 'pull_request' || needs.changes.outputs.infra == 'true') }}
+    needs: changes
     secrets: inherit
     uses: ./.github/workflows/_terraform-apply.yml
     with:
@@ -60,15 +102,10 @@ jobs:
 name: deploy
 
 on:
+  # Runs on every PR so the required deploy-gate always reports; the `changes`
+  # job + per-job `if` skip the plan when no infra path changed. Push stays
+  # path-filtered: master only applies when infra/deploy-config actually changes.
   pull_request:
-    paths:
-      - .github/workflows/_terraform-apply.yml
-      - .github/workflows/deploy.yml
-      - .secrets
-      - compose/docker-compose.yml
-      - linode/environments/dokploy/**
-      - linode/environments/production/**
-      - linode/modules/**
   push:
     branches: [master]
     paths:
@@ -87,3 +124,4 @@ on:
 
 permissions:
   contents: read
+  pull-requests: read

@@ -1,0 +1,56 @@
+# Dependabot version updates. Security updates are enabled separately via the
+# repo's vulnerability-alerts + automated-security-fixes settings.
+updates:
+  # GitHub Actions pins across all workflow files (.github/workflows/*).
+  - directory: /
+    groups:
+      actions:
+        update-types: [minor, patch]
+    labels: [dependencies, github-actions]
+    open-pull-requests-limit: 5
+    package-ecosystem: github-actions
+    schedule:
+      interval: weekly
+
+  # Astarte image base layers (Dockerfile). Only bumps pinned tags — keep
+  # service images on a real tag, not :latest, for this to track them.
+  - directory: /astarte
+    groups:
+      docker:
+        update-types: [minor, patch]
+    labels: [dependencies, docker]
+    package-ecosystem: docker
+    schedule:
+      interval: weekly
+
+  # Astarte Python deps (pyproject.toml + uv.lock). Uses the dedicated `uv`
+  # ecosystem so the lockfile itself is updated, not just pyproject ranges.
+  - directory: /astarte
+    groups:
+      python:
+        update-types: [minor, patch]
+    labels: [dependencies, python]
+    package-ecosystem: uv
+    schedule:
+      interval: weekly
+
+  # Terraform provider/module constraints in each environment + the modules.
+  - directories:
+      - /linode/environments/production
+      - /linode/environments/dokploy
+      - /linode/modules/*
+    groups:
+      terraform:
+        update-types: [minor, patch]
+    labels: [dependencies, terraform]
+    package-ecosystem: terraform
+    schedule:
+      interval: weekly
+
+  # Submodule pointers (.secrets, dotfile-utils) -> their default-branch HEAD.
+  - directory: /
+    labels: [dependencies, submodules]
+    package-ecosystem: gitsubmodule
+    schedule:
+      interval: weekly
+version: 2
