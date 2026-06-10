@@ -1,0 +1,16 @@
+personal-infrastructure
+Copyright 2026 SymbionicNigel
+
+Licensed under the Apache License, Version 2.0 (the "License"); see LICENSE.
+
+This repository is a personal infrastructure configuration shared as a
+reference, not as a supported product. Deployment patterns, service
+names, image namespaces, and host configurations are tuned for the
+maintainer's environment and may not be appropriate for direct reuse.
+
+No warranty of any kind is provided. The maintainer accepts no
+responsibility for losses or damages arising from use of this code.
+
+Trademarks and service marks referenced in this repository (including
+but not limited to "SymbionicNigel") are reserved and are not granted
+for reuse under the Apache License (see Section 6, Trademarks).

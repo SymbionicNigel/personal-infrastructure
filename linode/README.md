@@ -61,6 +61,16 @@ keypair and idempotently appends an `Include` line to `~/.ssh/config` so
 embedded there today; a bastion / Tailscale / Cloudflare Tunnel endpoint
 is the intended replacement (see TODO in `base.tf`).
 
+**In CI:** the `infra` workflow runs `production.sh` (on `workflow_dispatch`
+and on changes to `linode/environments/production/**`, `linode/modules/**`,
+or the `.secrets` submodule pointer). There it stops after the Terraform
+apply — the local-developer bootstrap above (the `~/.ssh/config` Include and
+regenerating + chezmoi-syncing the dokploy stage's `.env` from the
+provisioned API key) is skipped via a `CI=true` guard. That handoff is
+interactive (`chezmoi merge`) and commits into the `.secrets` submodule, so
+it stays local-only — needed only when the instance is re-provisioned and
+the Dokploy API key changes.
+
 ### Stage 2 — Dokploy
 
 ```bash
@@ -71,6 +81,36 @@ Configures Dokploy itself: project, compose stack, and any Dokploy-side
 domains. Routing is driven by Traefik labels in the root `docker-compose.yml`,
 not by `dokploy_domain` resources — labels are the single source of truth
 across local and prod so the same compose file describes both.
+
+**Deploy lever:** each service's image is pinned by a `TF_VAR_<SERVICE>_IMAGE_TAG`
+(e.g. `TF_VAR_ASTARTE_IMAGE_TAG`). CI sets it to the built commit SHA; for a
+manual deploy, export it (or set it in `linode/environments/dokploy/.env`) before
+`dokploy.sh`. The `latest` default is intentionally unused so deploys are
+explicit and reproducible.
+
+### Stage 2.5 — GHCR pull credential
+
+The astarte image (and any future GHCR-hosted service) is published to a
+private GHCR namespace, so the Dokploy host needs `docker login`
+credentials before a deploy can pull. This is automated by
+`null_resource.ghcr_login` in the production environment: it SSHes to the
+host and runs `docker login ghcr.io` as root, re-running only when the PAT
+or the host changes (so rotation and host rebuilds are hands-off).
+
+Setup:
+
+1. Generate a fine-grained PAT in GitHub
+   (Settings → Developer settings → Personal access tokens → Fine-grained):
+   - Repository access: this repo only
+   - Permissions: `Packages: Read-only` (use a classic PAT with
+     `read:packages` if the fine-grained token won't authenticate to GHCR)
+   - Expiration: 1 year
+2. Add it (and your GitHub username) to the production `.env` via chezmoi:
+   `TF_VAR_GHCR_USER=<github-user>` and `TF_VAR_GHCR_PAT=<pat>`.
+3. `terraform apply` the production environment — the host is logged in.
+
+Survives reboots. Host rebuild and PAT rotation re-apply automatically on
+the next `terraform apply` (the PAT hash is a resource trigger).
 
 ## Rationale
 

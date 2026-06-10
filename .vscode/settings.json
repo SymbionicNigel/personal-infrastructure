@@ -1,15 +1,15 @@
 {
     "yaml.schemas": {
-        "https://json.schemastore.org/eslintrc.json": "file:///home/nigel/personal-infrastructure/solid/.eslintrc.yml"
+        "./.vscode/empty.schema.json": ["**/.github/workflows/*.yml", "**/.github/workflows/*.yaml"]
     },
     "editor.codeActionsOnSave": {
         "source.fixAll": "explicit"
     },
     "eslint.enable": true,
-    "todo-tree.tree.disableCompactFolders": true,
-    "todo-tree.tree.showCountsInTree": true,
     "files.associations": {
         ".env.*": "dotenv",
         ".env": "dotenv"
     },
+    "better-todo-tree.tree.disableCompactFolders": true,
+    "better-todo-tree.tree.showCountsInTree": true,
 }

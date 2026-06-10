@@ -13,11 +13,14 @@
 #     Traefik; the labels below are metadata only when run locally.
 #
 # To add a service:
-#   1. Append a service block following the `janus` pattern.
+#   1. Append a service block following the `astarte` pattern (image,
+#      labels, networks, restart). Use `janus` as the minimal reference
+#      for image-only services without healthcheck.
 #   2. Add Traefik labels (hardcoded prod values; only the HOSTNAME_TLD
-#      value is interpolated).
+#      and ${GHCR_OWNER}/${ASTARTE_IMAGE_TAG} values are interpolated).
 #   3. In docker-compose.override.yml, add a `ports:` mapping so the
-#      service is reachable locally.
+#      service is reachable locally. For source-built services, also add
+#      `build` (targeting the dev stage) and a source bind-mount.
 
 networks:
   dokploy-network:
@@ -25,14 +28,31 @@ networks:
     name: dokploy-network
 
 services:
+  astarte:
+    image: ghcr.io/${GHCR_OWNER}/astarte:${ASTARTE_IMAGE_TAG}
+    labels:
+      traefik.enable: 'true'
+      traefik.http.routers.astarte.entrypoints: 'websecure'
+      traefik.http.routers.astarte.rule: 'Host(`astarte.${HOSTNAME_TLD}`)'
+      traefik.http.routers.astarte.tls: 'true'
+      traefik.http.routers.astarte.tls.certresolver: 'letsencrypt'
+      traefik.http.services.astarte.loadbalancer.healthcheck.interval: '30s'
+      traefik.http.services.astarte.loadbalancer.healthcheck.path: '/health'
+      traefik.http.services.astarte.loadbalancer.healthcheck.timeout: '5s'
+      traefik.http.services.astarte.loadbalancer.server.port: '8000'
+    networks:
+      - dokploy-network
+    restart: unless-stopped
+
   janus:
     image: traefik/whoami:latest
     labels:
-      traefik.enable: "true"
-      traefik.http.routers.janus.entrypoints: "websecure"
-      traefik.http.routers.janus.rule: "Host(`janus.${HOSTNAME_TLD}`)"
-      traefik.http.routers.janus.tls: "true"
-      traefik.http.routers.janus.tls.certresolver: "letsencrypt"
-      traefik.http.services.janus.loadbalancer.server.port: "80"
+      traefik.enable: 'true'
+      traefik.http.routers.janus.entrypoints: 'websecure'
+      traefik.http.routers.janus.rule: 'Host(`janus.${HOSTNAME_TLD}`)'
+      traefik.http.routers.janus.tls: 'true'
+      traefik.http.routers.janus.tls.certresolver: 'letsencrypt'
+      traefik.http.services.janus.loadbalancer.server.port: '80'
     networks:
       - dokploy-network
+    restart: unless-stopped

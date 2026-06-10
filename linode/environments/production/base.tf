@@ -130,6 +130,45 @@ resource "null_resource" "bind_dokploy_domain" {
   }
 }
 
+# Authenticate the host's docker daemon to GHCR so Dokploy can pull private
+# images (ghcr.io/<owner>/<svc>:<sha>). The PAT is shipped over SSH and
+# `docker login` runs as root (Dokploy's daemon reads /root/.docker/config.json).
+# Re-runs only when the PAT or the host changes, so PAT rotation and host
+# rebuilds are hands-off. Replaces the former manual Stage 2.5 SSH step.
+resource "null_resource" "ghcr_login" {
+  depends_on = [module.dokploy-instance]
+
+  triggers = {
+    instance_ip = module.dokploy-instance.instance_ip
+    ghcr_user   = var.GHCR_USER
+    pat_hash    = sha256(var.GHCR_PAT)
+  }
+
+  connection {
+    type        = "ssh"
+    host        = module.dokploy-instance.instance_ip
+    user        = "symbionic_dokploy_user"
+    private_key = file("${path.root}/id_ed25519")
+  }
+
+  # Brief plaintext on disk (rm'd in the same step), mirroring how
+  # bind_dokploy_domain ships its payload.
+  provisioner "file" {
+    destination = "/home/symbionic_dokploy_user/.ghcr-pat"
+    content     = var.GHCR_PAT
+  }
+
+  provisioner "remote-exec" {
+    inline = [
+      <<-EOT
+      set -eu
+      sudo docker login ghcr.io -u '${var.GHCR_USER}' --password-stdin < /home/symbionic_dokploy_user/.ghcr-pat
+      rm -f /home/symbionic_dokploy_user/.ghcr-pat
+      EOT
+    ]
+  }
+}
+
 # Long-lived backups bucket. Kept here (not inside acme-backup module) so other
 # modules can reference it. prevent_destroy guards against accidental nuking on
 # `terraform destroy` — destroys fail loudly until the line is removed.

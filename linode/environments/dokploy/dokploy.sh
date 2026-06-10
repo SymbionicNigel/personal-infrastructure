@@ -9,5 +9,19 @@ set -a
 source .env
 set +a
 
+# Owner of this repository drives the GHCR image namespace. CI provides it
+# directly; locally `gh repo view` resolves it from the origin remote.
+# Lowercased because GHCR paths must be lowercase.
+OWNER="${GITHUB_REPOSITORY_OWNER:-$(gh repo view --json owner --jq '.owner.login')}"
+: "${OWNER:?could not determine repo owner (set GITHUB_REPOSITORY_OWNER or run gh auth login)}"
+export TF_VAR_GHCR_OWNER="${OWNER,,}"
+
 terraform init -backend-config=backend.hcl
+
+# TF_PLAN_ONLY=true (set by the reusable workflow on PR validation) runs a
+# read-only plan instead of mutating anything.
+if [ "${TF_PLAN_ONLY:-false}" = "true" ]; then
+  terraform plan -input=false
+  exit 0
+fi
 terraform apply -input=false -auto-approve

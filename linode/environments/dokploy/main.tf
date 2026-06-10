@@ -25,8 +25,11 @@ data "dotenv" "compose" {
 
 locals {
   hostname_tld = data.dotenv.compose.entries["HOSTNAME_TLD"]
+  ghcr_owner   = var.GHCR_OWNER
   compose_content = templatefile("${path.root}/../../../compose/docker-compose.yml", {
-    HOSTNAME_TLD = local.hostname_tld
+    HOSTNAME_TLD      = local.hostname_tld
+    GHCR_OWNER        = local.ghcr_owner
+    ASTARTE_IMAGE_TAG = var.ASTARTE_IMAGE_TAG
   })
 }
 
@@ -71,5 +74,25 @@ resource "dokploy_compose" "stack" {
   name                 = "main-application-stack"
   source_type          = "raw"
   compose_file_content = local.compose_content
-  deploy_on_create     = true
+  deploy_on_create     = false
+}
+
+# The provider's Update saves the compose but never redeploys, so a bumped image
+# tag wouldn't roll out. Replicate its deploy call on every content change.
+resource "terraform_data" "redeploy" {
+  triggers_replace = local.compose_content
+
+  provisioner "local-exec" {
+    environment = {
+      DOKPLOY_API_KEY = var.DOKPLOY_API_KEY
+    }
+    command = <<-EOT
+      curl -sf -X POST "https://vulcan.${local.hostname_tld}/api/compose.deploy" \
+        -H "Content-Type: application/json" \
+        -H "x-api-key: $DOKPLOY_API_KEY" \
+        --data '{"composeId":"${dokploy_compose.stack.id}"}'
+    EOT
+  }
+
+  depends_on = [dokploy_compose.stack]
 }

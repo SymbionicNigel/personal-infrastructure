@@ -57,3 +57,17 @@ variable "GPG_RECIPIENT" {
   nullable    = false
   description = "GPG recipient (key id, fingerprint, or email) used to encrypt acme.json backups. Public key must be in the deploy machine's gpg keyring."
 }
+
+variable "GHCR_USER" {
+  type        = string
+  sensitive   = true
+  nullable    = false
+  description = "GitHub username used for `docker login ghcr.io` on the host so Dokploy can pull private images."
+}
+
+variable "GHCR_PAT" {
+  type        = string
+  sensitive   = true
+  nullable    = false
+  description = "Fine-grained PAT (Packages: Read-only) the host uses to authenticate to GHCR for image pulls."
+}

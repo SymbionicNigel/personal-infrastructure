@@ -32,8 +32,29 @@ add_or_merge_to_chezmoi() {
     fi
 }
 
+# Repo owner is the GHCR login username for the host's docker login. CI provides
+# it; locally fall back to the origin remote via gh. (GHCR usernames are
+# case-insensitive, so no lowercasing needed here.)
+OWNER="${GITHUB_REPOSITORY_OWNER:-$(gh repo view --json owner --jq '.owner.login')}"
+: "${OWNER:?could not determine repo owner (set GITHUB_REPOSITORY_OWNER or run gh auth login)}"
+export TF_VAR_GHCR_USER="$OWNER"
+
 terraform init -backend-config=backend.hcl
+
+# TF_PLAN_ONLY=true (set by the reusable workflow on PR validation) runs a
+# read-only plan and skips both the apply and the local bootstrap below.
+if [ "${TF_PLAN_ONLY:-false}" = "true" ]; then
+    terraform plan -input=false
+    exit 0
+fi
 terraform apply -input=false -auto-approve
+
+# Remaining steps are local-developer bootstrap (SSH config Include, handing the
+# provisioned API key to the dokploy stage, syncing it into chezmoi). CI runners
+# set CI=true and are done after the apply.
+if [ -n "${CI:-}" ]; then
+    exit 0
+fi
 
 # Make `ssh dokploy-prod` work for this user by adding a one-line Include to
 # ~/.ssh/config that points at the terraform-generated dokploy.sshconfig.
@@ -64,7 +85,6 @@ API_KEY=$(cat "$API_KEY_FILE")
 # Hand off to the dokploy stage by generating its .env
 cat > "../dokploy/.env" << EOF
 TF_VAR_DOKPLOY_API_KEY=$API_KEY
-TF_VAR_HOSTNAME_TLD=$TF_VAR_HOSTNAME_TLD
 AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID
 AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY
 EOF

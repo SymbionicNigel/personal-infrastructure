@@ -13,6 +13,13 @@ pgdata
 .terraform
 terraform.tfstate.backup
 terraform.tfstate
+
+# Python build artifacts (applies to astarte/ and any future Python service).
+**/.venv/
+**/__pycache__/
+**/*.pyc
+**/.pytest_cache/
+**/dist/
 # --- End of content from original .gitignore ---
 
 # --- Start of chezmoi-managed entries ---
