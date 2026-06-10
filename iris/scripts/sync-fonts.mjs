@@ -4,9 +4,9 @@
 // copyright notice (compliance). Idempotent — re-run `pnpm fonts:sync` to
 // refresh or after editing the registry. The woff2 + LICENSES.txt are
 // committed so Docker/CI builds need no font network.
-import { mkdir, rm, writeFile } from "node:fs/promises";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
+import { mkdir, rm, writeFile } from 'node:fs/promises';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 // Single source of truth for the font registry. Keep in sync with the
 // @font-face block + CSS vars in app/styles/app.css and the switcher UI.
@@ -14,40 +14,71 @@ import { fileURLToPath } from "node:url";
 // `role: "heading"` faces appear in the styleguide switcher; the single
 // `role: "body"` face is the default text/UI font.
 const FONTS = [
-  { slug: "sacramento", family: "Sacramento", dir: "sacramento", license: "ofl", role: "heading" },
-  { slug: "aladin", family: "Aladin", dir: "aladin", license: "ofl", role: "heading" },
-  { slug: "freckle-face", family: "Freckle Face", dir: "freckleface", license: "ofl", role: "heading" },
-  { slug: "yellowtail", family: "Yellowtail", dir: "yellowtail", license: "apache", role: "heading" },
-  { slug: "kaushan-script", family: "Kaushan Script", dir: "kaushanscript", license: "ofl", role: "heading" },
-  { slug: "grand-hotel", family: "Grand Hotel", dir: "grandhotel", license: "ofl", role: "heading" },
+  { slug: 'sacramento', family: 'Sacramento', dir: 'sacramento', license: 'ofl', role: 'heading' },
+  { slug: 'aladin', family: 'Aladin', dir: 'aladin', license: 'ofl', role: 'heading' },
+  {
+    slug: 'freckle-face',
+    family: 'Freckle Face',
+    dir: 'freckleface',
+    license: 'ofl',
+    role: 'heading',
+  },
+  {
+    slug: 'yellowtail',
+    family: 'Yellowtail',
+    dir: 'yellowtail',
+    license: 'apache',
+    role: 'heading',
+  },
+  {
+    slug: 'kaushan-script',
+    family: 'Kaushan Script',
+    dir: 'kaushanscript',
+    license: 'ofl',
+    role: 'heading',
+  },
+  {
+    slug: 'grand-hotel',
+    family: 'Grand Hotel',
+    dir: 'grandhotel',
+    license: 'ofl',
+    role: 'heading',
+  },
   // Body face requests the full weight range (variable woff2) for real bold.
-  { slug: "space-grotesk", family: "Space Grotesk", dir: "spacegrotesk", license: "ofl", role: "body", axes: "wght@300..700" },
+  {
+    slug: 'space-grotesk',
+    family: 'Space Grotesk',
+    dir: 'spacegrotesk',
+    license: 'ofl',
+    role: 'body',
+    axes: 'wght@300..700',
+  },
 ];
 
 // A modern UA makes the css2 endpoint return woff2 sources.
 const UA =
-  "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120 Safari/537.36";
-const OFL_MARKER = "This Font Software is licensed under the SIL Open Font License";
-const GF_RAW = "https://raw.githubusercontent.com/google/fonts/main";
-const LABEL = { ofl: "SIL Open Font License 1.1", apache: "Apache License 2.0" };
+  'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120 Safari/537.36';
+const OFL_MARKER = 'This Font Software is licensed under the SIL Open Font License';
+const GF_RAW = 'https://raw.githubusercontent.com/google/fonts/main';
+const LABEL = { ofl: 'SIL Open Font License 1.1', apache: 'Apache License 2.0' };
 
-const outDir = join(dirname(fileURLToPath(import.meta.url)), "..", "public", "fonts");
+const outDir = join(dirname(fileURLToPath(import.meta.url)), '..', 'public', 'fonts');
 
 /** Pick the woff2 URL for the basic-latin subset (fall back to the first). */
 function latinWoff2(css) {
   const re = /\/\*\s*([\w-]+)\s*\*\/\s*@font-face\s*{([^}]+)}/g;
   let fallback;
   for (const [, subset, body] of css.matchAll(re)) {
-    const url = body.match(/url\(([^)]+\.woff2)\)/)?.[1]?.replace(/['"]/g, "");
+    const url = body.match(/url\(([^)]+\.woff2)\)/)?.[1]?.replace(/['"]/g, '');
     if (!url) continue;
-    if (subset === "latin") return url;
+    if (subset === 'latin') return url;
     fallback ??= url;
   }
   return fallback;
 }
 
 async function fetchText(url) {
-  const res = await fetch(url, { headers: { "User-Agent": UA } });
+  const res = await fetch(url, { headers: { 'User-Agent': UA } });
   if (!res.ok) throw new Error(`${res.status} ${res.statusText} for ${url}`);
   return res.text();
 }
@@ -55,33 +86,33 @@ async function fetchText(url) {
 await mkdir(outDir, { recursive: true });
 
 let failures = 0;
-let oflBody = "";
+let oflBody = '';
 const notices = [];
 
 for (const { slug, family, dir, license, axes } of FONTS) {
   try {
     // css2 wants `Family+Name[:axisTag@range]`; only spaces need encoding.
-    const famParam = family.replace(/ /g, "+") + (axes ? `:${axes}` : "");
+    const famParam = family.replace(/ /g, '+') + (axes ? `:${axes}` : '');
     const css = await fetchText(
       `https://fonts.googleapis.com/css2?family=${famParam}&display=swap`,
     );
     const url = latinWoff2(css);
-    if (!url) throw new Error("no woff2 URL found in css2 response");
-    const res = await fetch(url, { headers: { "User-Agent": UA } });
+    if (!url) throw new Error('no woff2 URL found in css2 response');
+    const res = await fetch(url, { headers: { 'User-Agent': UA } });
     if (!res.ok) throw new Error(`${res.status} downloading ${url}`);
     const bytes = Buffer.from(await res.arrayBuffer());
     await writeFile(join(outDir, `${slug}.woff2`), bytes);
     console.log(`✔ ${family.padEnd(16)} ${(bytes.length / 1024).toFixed(1).padStart(5)} KiB`);
 
     // Authoritative copyright from the font's METADATA.pb; OFL body once.
-    const gfDir = license === "apache" ? "apache" : "ofl";
+    const gfDir = license === 'apache' ? 'apache' : 'ofl';
     const metadata = await fetchText(`${GF_RAW}/${gfDir}/${dir}/METADATA.pb`);
     // .pb strings escape inner quotes (\"); capture through them, then unescape.
     const copyright =
-      metadata.match(/copyright:\s*"((?:[^"\\]|\\.)*)"/)?.[1]?.replace(/\\(.)/g, "$1") ??
-      "(copyright not found)";
+      metadata.match(/copyright:\s*"((?:[^"\\]|\\.)*)"/)?.[1]?.replace(/\\(.)/g, '$1') ??
+      '(copyright not found)';
     notices.push(`${family} — ${LABEL[license]}\n${copyright}`);
-    if (license === "ofl" && !oflBody) {
+    if (license === 'ofl' && !oflBody) {
       const ofl = await fetchText(`${GF_RAW}/ofl/${dir}/OFL.txt`);
       const idx = ofl.indexOf(OFL_MARKER);
       if (idx >= 0) oflBody = ofl.slice(idx).trim();
@@ -94,17 +125,17 @@ for (const { slug, family, dir, license, axes } of FONTS) {
 
 if (notices.length) {
   const out = [
-    "iris self-hosted fonts — licenses & copyright notices",
-    "Generated by scripts/sync-fonts.mjs; do not edit by hand.\n",
+    'iris self-hosted fonts — licenses & copyright notices',
+    'Generated by scripts/sync-fonts.mjs; do not edit by hand.\n',
     ...notices,
-    `${"=".repeat(72)}\nSIL Open Font License, Version 1.1\n${"=".repeat(72)}\n\n${oflBody}`,
-    `${"=".repeat(72)}\nApache License, Version 2.0\n${"=".repeat(72)}\n\n` +
-      "Apache-2.0 fonts above are used under the Apache License 2.0; the full\n" +
+    `${'='.repeat(72)}\nSIL Open Font License, Version 1.1\n${'='.repeat(72)}\n\n${oflBody}`,
+    `${'='.repeat(72)}\nApache License, Version 2.0\n${'='.repeat(72)}\n\n` +
+      'Apache-2.0 fonts above are used under the Apache License 2.0; the full\n' +
       "text is the repository's root LICENSE file (this project is Apache-2.0).",
-  ].join(`\n\n${"-".repeat(72)}\n\n`);
-  await rm(join(outDir, "OFL.txt"), { force: true }); // drop the earlier mislabeled file
-  await writeFile(join(outDir, "LICENSES.txt"), `${out}\n`);
-  console.log("✔ wrote public/fonts/LICENSES.txt");
+  ].join(`\n\n${'-'.repeat(72)}\n\n`);
+  await rm(join(outDir, 'OFL.txt'), { force: true }); // drop the earlier mislabeled file
+  await writeFile(join(outDir, 'LICENSES.txt'), `${out}\n`);
+  console.log('✔ wrote public/fonts/LICENSES.txt');
 }
 
 if (failures) {

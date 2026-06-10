@@ -1,4 +1,4 @@
-import type { Config } from "@react-router/dev/config";
+import type { Config } from '@react-router/dev/config';
 
 export default {
   // SSR on by default; per-route clientLoader/clientAction opt into the client.

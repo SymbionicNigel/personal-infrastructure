@@ -1,7 +1,7 @@
-import type { Route } from "./+types/styleguide";
+import type { Route } from './+types/styleguide';
 
 export function meta(_: Route.MetaArgs) {
-  return [{ title: "Styleguide — iris" }];
+  return [{ title: 'Styleguide — iris' }];
 }
 
 export default function Styleguide() {
