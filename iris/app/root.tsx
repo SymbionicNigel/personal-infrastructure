@@ -1,4 +1,7 @@
+import { useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
+  data,
   isRouteErrorResponse,
   Links,
   Meta,
@@ -8,11 +11,22 @@ import {
 } from 'react-router';
 
 import type { Route } from './+types/root';
+import { getLocale, i18nextMiddleware, localeCookie } from './middleware/i18next';
 import './styles/app.css';
 
+// Detects the locale on every request and exposes it via router context.
+export const middleware = [i18nextMiddleware];
+
+export async function loader({ context }: Route.LoaderArgs) {
+  const locale = getLocale(context);
+  return data({ locale }, { headers: { 'Set-Cookie': await localeCookie.serialize(locale) } });
+}
+
 export function Layout({ children }: { children: React.ReactNode }) {
+  const { i18n } = useTranslation();
   return (
-    <html lang="en" className="dark">
+    // `className="dark"` keeps Park UI's dark scales active (dark-only this round).
+    <html lang={i18n.language} dir={i18n.dir(i18n.language)} className="dark">
       <head>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -28,7 +42,12 @@ export function Layout({ children }: { children: React.ReactNode }) {
   );
 }
 
-export default function App() {
+export default function App({ loaderData }: Route.ComponentProps) {
+  const { i18n } = useTranslation();
+  // Keep the client i18next instance in sync with the server-detected locale.
+  useEffect(() => {
+    if (i18n.language !== loaderData.locale) i18n.changeLanguage(loaderData.locale);
+  }, [loaderData.locale, i18n]);
   return <Outlet />;
 }
 
