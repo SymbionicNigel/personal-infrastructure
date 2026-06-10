@@ -16,21 +16,27 @@ concurrency:
   group: deploy-${{ github.event_name == 'pull_request' && format('plan-{0}', github.ref) || 'apply' }}
 
 jobs:
-  # Detect whether any infra/deploy-config path changed. On non-PR events the
-  # filter is skipped and defaults to true (push/workflow_run/dispatch always
-  # apply). Lets the workflow trigger on every PR while the plan jobs skip when
-  # no infra changed -- so the required deploy-gate never deadlocks an unrelated
-  # PR (a non-reporting required check blocks merge; a skipped one does not).
+  # Detect what changed so the plan jobs can gate correctly. `infra` defaults to
+  # true on non-PR/push events (workflow_run/dispatch always apply). `astarte`
+  # is used to dedupe: a master push that also touched astarte/ is left to the
+  # workflow_run-triggered deploy (which waits for the rebuilt image), so it
+  # doesn't apply twice. Runs on every PR so the required deploy-gate always
+  # reports while the plan jobs skip when no infra changed.
   changes:
     outputs:
+      astarte: ${{ steps.filter.outputs.astarte || 'false' }}
       infra: ${{ steps.filter.outputs.infra || 'true' }}
     runs-on: ubuntu-latest
     steps:
+      - if: ${{ github.event_name == 'push' }}
+        uses: actions/checkout@v6
       - id: filter
-        if: ${{ github.event_name == 'pull_request' }}
+        if: ${{ github.event_name == 'pull_request' || github.event_name == 'push' }}
         uses: dorny/paths-filter@v4
         with:
           filters: |
+            astarte:
+              - 'astarte/**'
             infra:
               - '.github/workflows/_terraform-apply.yml'
               - '.github/workflows/deploy.yml'
@@ -40,8 +46,12 @@ jobs:
               - 'linode/environments/production/**'
               - 'linode/modules/**'
 
+  # Gated to skip when: a PR didn't touch infra; a PR is from Dependabot (its
+  # runs have no CI_PAT, so the plan can't read Variables or the private
+  # submodule -- review those by hand); or a push also changed astarte/ (the
+  # workflow_run deploy handles it, avoiding a double apply).
   collect:
-    if: ${{ (github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success') && (github.event_name != 'pull_request' || needs.changes.outputs.infra == 'true') }}
+    if: ${{ (github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success') && (github.event_name != 'pull_request' || (needs.changes.outputs.infra == 'true' && github.actor != 'dependabot[bot]')) && !(github.event_name == 'push' && needs.changes.outputs.astarte == 'true') }}
     needs: changes
     outputs:
       tf_vars: ${{ steps.tags.outputs.tf_vars }}
@@ -55,7 +65,7 @@ jobs:
           {
             echo "tf_vars<<TFVARS_EOF"
             gh variable list --repo "${GITHUB_REPOSITORY}" --json name,value \
-              --jq '.[] | select(.name | endswith("_IMAGE_TAG")) | "TF_VAR_\(.name)=\(.value)"'
+              --jq '.[] | select(.name | endswith("_IMAGE_TAG")) | "TF_VAR_\(.name)=\(.value)"' || true
             echo "TFVARS_EOF"
           } >> "$GITHUB_OUTPUT"
 
@@ -88,7 +98,7 @@ jobs:
       working_directory: linode/environments/dokploy
 
   prod:
-    if: ${{ (github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success') && (github.event_name != 'pull_request' || needs.changes.outputs.infra == 'true') }}
+    if: ${{ (github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success') && (github.event_name != 'pull_request' || (needs.changes.outputs.infra == 'true' && github.actor != 'dependabot[bot]')) && !(github.event_name == 'push' && needs.changes.outputs.astarte == 'true') }}
     needs: changes
     secrets: inherit
     uses: ./.github/workflows/_terraform-apply.yml

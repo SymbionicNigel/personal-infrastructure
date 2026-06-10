@@ -46,11 +46,4 @@ updates:
     package-ecosystem: terraform
     schedule:
       interval: weekly
-
-  # Submodule pointers (.secrets, dotfile-utils) -> their default-branch HEAD.
-  - directory: /
-    labels: [dependencies, submodules]
-    package-ecosystem: gitsubmodule
-    schedule:
-      interval: weekly
 version: 2
