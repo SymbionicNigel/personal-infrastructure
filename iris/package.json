@@ -9,6 +9,7 @@
   "scripts": {
     "build": "react-router build",
     "dev": "react-router dev",
+    "fonts:sync": "node scripts/sync-fonts.mjs",
     "format": "biome format --write .",
     "lint": "biome check",
     "prepare": "panda codegen",
