@@ -8,4 +8,10 @@ export default defineConfig({
   resolve: {
     tsconfigPaths: true,
   },
+  // Match the prod/compose port (react-router-serve defaults to 3000) instead
+  // of Vite's 5173, so local dev and the container line up.
+  server: {
+    port: 3000,
+    strictPort: true,
+  },
 });

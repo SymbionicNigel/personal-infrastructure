@@ -22,6 +22,8 @@ export default defineConfig({
             paper: { value: '#31281d' },
             primary: { value: '#669fb2' },
             secondary: { value: '#87aa7e' },
+            pistachio: { value: '#87aa7e' },
+            ink: { value: '#1c3a4a' },
             warning: { value: '#edbf02' },
             error: { value: '#e06c21' },
             info: { value: '#0288d1' },
@@ -42,6 +44,11 @@ export default defineConfig({
           bg: {
             canvas: { value: '{colors.vintage.bg}' },
             default: { value: '{colors.vintage.paper}' },
+            // Cards + elevated surfaces stay in the warm-brown family (vs Park
+            // UI's sand), with steps between them for hover/elevation contrast.
+            subtle: { value: '#3a3024' },
+            muted: { value: '#443829' },
+            emphasized: { value: '#4e422f' },
           },
           border: {
             default: { value: '{colors.vintage.divider}' },
@@ -52,6 +59,23 @@ export default defineConfig({
             error: { value: '{colors.vintage.error}' },
             success: { value: '{colors.vintage.success}' },
           },
+        },
+      },
+      recipes: {
+        // Pick a surface tone and its readable text color comes paired — no
+        // need to set `bg` + `color` together at every usage.
+        surface: {
+          className: 'surface',
+          description: 'A background surface paired with its readable text color.',
+          base: {},
+          variants: {
+            tone: {
+              canvas: { bg: 'bg.canvas', color: 'fg.default' },
+              paper: { bg: 'bg.default', color: 'fg.default' },
+              pistachio: { bg: 'vintage.pistachio', color: 'vintage.ink' },
+            },
+          },
+          defaultVariants: { tone: 'paper' },
         },
       },
     },

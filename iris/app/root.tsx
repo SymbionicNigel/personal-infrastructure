@@ -14,12 +14,38 @@ import type { Route } from './+types/root';
 import { getLocale, i18nextMiddleware, localeCookie } from './middleware/i18next';
 import './styles/app.css';
 
+export const links: Route.LinksFunction = () => [
+  { rel: 'icon', href: '/favicon.svg', type: 'image/svg+xml' },
+  // Preload the two default faces (body + default heading); other heading
+  // fonts load on demand when switched on /styleguide. Fonts are CORS-fetched,
+  // so the preload needs crossOrigin to match and avoid a double request.
+  {
+    rel: 'preload',
+    href: '/fonts/space-grotesk.woff2',
+    as: 'font',
+    type: 'font/woff2',
+    crossOrigin: 'anonymous',
+  },
+  {
+    rel: 'preload',
+    href: '/fonts/yellowtail.woff2',
+    as: 'font',
+    type: 'font/woff2',
+    crossOrigin: 'anonymous',
+  },
+];
+
 // Detects the locale on every request and exposes it via router context.
 export const middleware = [i18nextMiddleware];
 
-export async function loader({ context }: Route.LoaderArgs) {
+export async function loader({ context, request }: Route.LoaderArgs) {
   const locale = getLocale(context);
-  return data({ locale }, { headers: { 'Set-Cookie': await localeCookie.serialize(locale) } });
+  // Host drives the header title (localhost in dev, iris.<tld> in prod).
+  const host = new URL(request.url).hostname;
+  return data(
+    { locale, host },
+    { headers: { 'Set-Cookie': await localeCookie.serialize(locale) } },
+  );
 }
 
 export function Layout({ children }: { children: React.ReactNode }) {
