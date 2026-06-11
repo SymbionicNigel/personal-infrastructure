@@ -26,6 +26,7 @@ jobs:
     outputs:
       astarte: ${{ steps.filter.outputs.astarte || 'false' }}
       infra: ${{ steps.filter.outputs.infra || 'true' }}
+      iris: ${{ steps.filter.outputs.iris || 'false' }}
     runs-on: ubuntu-latest
     steps:
       - if: ${{ github.event_name == 'push' }}
@@ -45,13 +46,15 @@ jobs:
               - 'linode/environments/dokploy/**'
               - 'linode/environments/production/**'
               - 'linode/modules/**'
+            iris:
+              - 'iris/**'
 
   # Gated to skip when: a PR didn't touch infra; a PR is from Dependabot (its
   # runs have no CI_PAT, so the plan can't read Variables or the private
   # submodule -- review those by hand); or a push also changed astarte/ (the
   # workflow_run deploy handles it, avoiding a double apply).
   collect:
-    if: ${{ (github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success') && (github.event_name != 'pull_request' || (needs.changes.outputs.infra == 'true' && github.actor != 'dependabot[bot]')) && !(github.event_name == 'push' && needs.changes.outputs.astarte == 'true') }}
+    if: ${{ (github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success') && (github.event_name != 'pull_request' || (needs.changes.outputs.infra == 'true' && github.actor != 'dependabot[bot]')) && !(github.event_name == 'push' && needs.changes.outputs.astarte == 'true') && !(github.event_name == 'push' && needs.changes.outputs.iris == 'true') }}
     needs: changes
     outputs:
       tf_vars: ${{ steps.tags.outputs.tf_vars }}
@@ -98,7 +101,7 @@ jobs:
       working_directory: linode/environments/dokploy
 
   prod:
-    if: ${{ (github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success') && (github.event_name != 'pull_request' || (needs.changes.outputs.infra == 'true' && github.actor != 'dependabot[bot]')) && !(github.event_name == 'push' && needs.changes.outputs.astarte == 'true') }}
+    if: ${{ (github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success') && (github.event_name != 'pull_request' || (needs.changes.outputs.infra == 'true' && github.actor != 'dependabot[bot]')) && !(github.event_name == 'push' && needs.changes.outputs.astarte == 'true') && !(github.event_name == 'push' && needs.changes.outputs.iris == 'true') }}
     needs: changes
     secrets: inherit
     uses: ./.github/workflows/_terraform-apply.yml
@@ -130,7 +133,7 @@ on:
   workflow_run:
     branches: [master]
     types: [completed]
-    workflows: [astarte]
+    workflows: [astarte, iris]
 
 permissions:
   contents: read

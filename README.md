@@ -11,21 +11,21 @@ See [NOTICE](./NOTICE) for the full disclaimer and [LICENSE](./LICENSE)
 ## Dev Setup
 
 1. Need to add subdomains to `/etc/hosts` on Linux and `C:\Windows\System32\drivers\etc\hosts` on Windows so that subdomain testing will work
-   - astarte.localhost - FastAPI backend (Phoenician goddess of beauty; the public-facing presence of the Phoenician pantheon)
-   - enki.localhost - gitlab
-   - hendrix.localhost - traefik
-   - janus.localhost - whoami (Roman two-faced god of beginnings, doorways, and transitions)
-   - vulcan.localhost - dokploy console - Roman god of the forge, craftsmen, and builders
+   - astarte - FastAPI backend (Phoenician goddess of beauty; the public-facing presence of the Phoenician pantheon)
+   - enki - gitlab
+   - hendrix - traefik
+   - iris - React Router v7 web frontend (Greek messenger goddess; rainbow personified, the visible link between gods and mortals)
+   - janus - whoami (Roman two-faced god of beginnings, doorways, and transitions)
+   - vulcan - dokploy console - Roman god of the forge, craftsmen, and builders
    - IN NEED OF SERVICE
      - mimir - Norse god of knowledge.  Good for observation or knowledgebase
-     - iris - Greek messenger goddess, rainbow personified, the visible link between gods and mortals
      - selene - Greek moon goddess; the visible face of the night sky
      - ptah — Egyptian creator god and patron of craftsmen and architects.
      - inanna — Sumerian goddess of love and war, predecessor to Astarte/Ishtar. Keeps the Mesopotamian thread you started with Enki.
      - daedalus — the master craftsman and architect. Built the labyrinth, designed wings.
      - anubis — Egyptian guide of souls.
 
-1. To run Traefik and use https run the following command to create tls certificates for https to work properly
+2. To run Traefik and use https run the following command to create tls certificates for https to work properly
 
    ```openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout traefik/local_certs/traefik-selfsigned.key -out traefik/local_certs/traefik-selfsigned.crt -subj "/CN=*.<desired_local_domain_name>"```
 
@@ -40,7 +40,7 @@ handles routing and TLS; application services are defined in the root
 ## Modules
 
 1. [Linode](./linode/README.md) - Terraform based IAC
-2. [Solid](./solid/SOLIDSTART_README.md) - SolidStart web frontend
+2. [Iris](./iris/README.md) - React Router v7 web frontend (Node, pnpm-managed)
 3. [Astarte](./astarte/README.md) - FastAPI backend (Python, uv-managed)
 4. [Scripts](./scripts/README.md) - Scripts for building and developing in personal-infrastructure
 
@@ -84,7 +84,9 @@ checking. `docker logs --tail` is the only debugging tool today. Plausible
 first cut: Loki + Grafana (deployed as a Dokploy compose stack) for log
 storage and dashboards, plus `blackbox_exporter` (or an external service)
 hitting wildcard subdomains for uptime. Pick before the second service
-ships, because correlating two services with no log store is painful.
+ships, because correlating two services with no log store is painful. Also
+wanted: error tracking (client + server) via a self-hosted Sentry/GlitchTip,
+so iris's browser + SSR errors surface without grepping container logs.
 
 ### Persistent data tier
 
@@ -94,14 +96,6 @@ database per service, shared backups. Per-service Postgres containers
 multiply the backup matrix without much isolation benefit on a
 single-host deployment. Decide concretely (instance type, version pin,
 backup strategy) before the first DB-backed service lands.
-
-### Apex redirect + catch-all 404 router
-
-`symbionic.tech` (no subdomain) currently has no defined behavior. Once a
-user-facing service ships, we'll want either a redirect to a canonical
-host (e.g., `www.symbionic.tech`) or a static landing page. A catch-all
-router for undefined subdomains serving a 404 is similarly cosmetic but
-worth doing once UI work begins.
 
 ### Billing alerts
 

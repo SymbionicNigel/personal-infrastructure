@@ -12,6 +12,13 @@ variable "ASTARTE_IMAGE_TAG" {
   default     = "latest"
 }
 
+variable "IRIS_IMAGE_TAG" {
+  type        = string
+  nullable    = false
+  description = "Image tag (git SHA in CI, 'latest' for manual applies) for the iris image on GHCR."
+  default     = "latest"
+}
+
 variable "GHCR_OWNER" {
   type        = string
   nullable    = false

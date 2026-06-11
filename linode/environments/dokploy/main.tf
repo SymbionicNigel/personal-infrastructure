@@ -30,6 +30,7 @@ locals {
     HOSTNAME_TLD      = local.hostname_tld
     GHCR_OWNER        = local.ghcr_owner
     ASTARTE_IMAGE_TAG = var.ASTARTE_IMAGE_TAG
+    IRIS_IMAGE_TAG    = var.IRIS_IMAGE_TAG
   })
 }
 

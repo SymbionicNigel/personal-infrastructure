@@ -44,6 +44,46 @@ services:
       - dokploy-network
     restart: unless-stopped
 
+  # iris is reachable at iris.<tld>. The apex + www redirect to it; undefined
+  # single-level subdomains 302 to iris.<tld>/404 via a low-priority catch-all
+  # (real routers always win on their higher rule priority). `$$` escapes a
+  # literal `$` so it survives both templatefile() and compose; `$${1}` yields
+  # the Traefik backreference `${1}`. The catch-all's TLS needs a wildcard cert
+  # (*.<tld>) — verify the letsencrypt resolver does DNS-01.
+  iris:
+    image: ghcr.io/${GHCR_OWNER}/iris:${IRIS_IMAGE_TAG}
+    labels:
+      traefik.enable: 'true'
+      traefik.http.middlewares.iris-apex-redirect.redirectregex.permanent: 'true'
+      traefik.http.middlewares.iris-apex-redirect.redirectregex.regex: '^https?://(?:www\.)?${HOSTNAME_TLD}/(.*)'
+      traefik.http.middlewares.iris-apex-redirect.redirectregex.replacement: 'https://iris.${HOSTNAME_TLD}/$$1'
+      traefik.http.middlewares.iris-catchall-redirect.redirectregex.regex: '.*'
+      traefik.http.middlewares.iris-catchall-redirect.redirectregex.replacement: 'https://iris.${HOSTNAME_TLD}/404'
+      traefik.http.routers.iris-apex.entrypoints: 'websecure'
+      traefik.http.routers.iris-apex.middlewares: 'iris-apex-redirect'
+      traefik.http.routers.iris-apex.rule: 'Host(`${HOSTNAME_TLD}`) || Host(`www.${HOSTNAME_TLD}`)'
+      traefik.http.routers.iris-apex.tls: 'true'
+      traefik.http.routers.iris-apex.tls.certresolver: 'letsencrypt'
+      traefik.http.routers.iris-catchall.entrypoints: 'websecure'
+      traefik.http.routers.iris-catchall.middlewares: 'iris-catchall-redirect'
+      traefik.http.routers.iris-catchall.priority: '1'
+      traefik.http.routers.iris-catchall.rule: 'HostRegexp(`^.+\.${HOSTNAME_TLD}$$`)'
+      traefik.http.routers.iris-catchall.tls: 'true'
+      traefik.http.routers.iris-catchall.tls.certresolver: 'letsencrypt'
+      traefik.http.routers.iris-catchall.tls.domains[0].main: '${HOSTNAME_TLD}'
+      traefik.http.routers.iris-catchall.tls.domains[0].sans: '*.${HOSTNAME_TLD}'
+      traefik.http.routers.iris.entrypoints: 'websecure'
+      traefik.http.routers.iris.rule: 'Host(`iris.${HOSTNAME_TLD}`)'
+      traefik.http.routers.iris.tls: 'true'
+      traefik.http.routers.iris.tls.certresolver: 'letsencrypt'
+      traefik.http.services.iris.loadbalancer.healthcheck.interval: '30s'
+      traefik.http.services.iris.loadbalancer.healthcheck.path: '/health'
+      traefik.http.services.iris.loadbalancer.healthcheck.timeout: '5s'
+      traefik.http.services.iris.loadbalancer.server.port: '3000'
+    networks:
+      - dokploy-network
+    restart: unless-stopped
+
   janus:
     image: traefik/whoami:latest
     labels:

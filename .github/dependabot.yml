@@ -34,6 +34,28 @@ updates:
     schedule:
       interval: weekly
 
+  # Iris image base layers (Dockerfile). Only bumps pinned tags — keep
+  # service images on a real tag, not :latest, for this to track them.
+  - directory: /iris
+    groups:
+      docker:
+        update-types: [minor, patch]
+    labels: [dependencies, docker]
+    package-ecosystem: docker
+    schedule:
+      interval: weekly
+
+  # Iris Node deps (package.json + pnpm-lock.yaml). The `npm` ecosystem reads
+  # the pnpm lockfile and updates it, not just package.json ranges.
+  - directory: /iris
+    groups:
+      npm:
+        update-types: [minor, patch]
+    labels: [dependencies, npm]
+    package-ecosystem: npm
+    schedule:
+      interval: weekly
+
   # Terraform provider/module constraints in each environment + the modules.
   - directories:
       - /linode/environments/production
