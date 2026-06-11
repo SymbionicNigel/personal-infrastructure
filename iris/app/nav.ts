@@ -17,6 +17,5 @@ export interface PageNode {
 
 export const PAGES: PageNode[] = [
   { path: '/', file: 'routes/_index.tsx', key: 'nav.home' },
-  { path: '/resume', file: 'routes/resume.tsx', key: 'nav.resume' },
   { path: '/styleguide', file: 'routes/styleguide.tsx', key: 'nav.styleguide' },
 ];

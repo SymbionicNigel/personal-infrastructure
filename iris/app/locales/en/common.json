@@ -3,15 +3,11 @@
   "tagline": "the visible link between gods and mortals",
   "nav": {
     "home": "Home",
-    "resume": "Résumé",
     "styleguide": "Styleguide"
   },
   "home": {
     "title": "iris",
     "intro": "The visible face of the stack — a small messenger between services and the people who use them."
-  },
-  "resume": {
-    "title": "Résumé"
   },
   "styleguide": {
     "title": "Styleguide",

@@ -100,6 +100,12 @@
     --font-heading: var(--font-grand-hotel);
   }
 
+  html {
+    /* The sticky header resizes on scroll; without this, scroll anchoring
+       counter-adjusts the scroll position and the header jitters. */
+    overflow-anchor: none;
+  }
+
   body {
     background-color: var(--colors-bg-canvas);
     color: var(--colors-fg-default);

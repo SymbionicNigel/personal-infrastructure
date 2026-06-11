@@ -54,10 +54,11 @@ export function HeaderBar() {
     };
   }, []);
 
-  const height = TALL - (TALL - SHORT) * progress;
+  // Round to whole pixels so the per-frame resize doesn't shimmer on subpixels.
+  const height = Math.round(TALL - (TALL - SHORT) * progress);
   // Keep the mark + title filling most of the (shrinking) header height.
-  const logoSize = height * 0.85;
-  const titlePx = height * 0.78;
+  const logoSize = Math.round(height * 0.85);
+  const titlePx = Math.round(height * 0.78);
 
   return (
     <styled.header
