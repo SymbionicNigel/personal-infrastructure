@@ -1,10 +1,6 @@
-// Single source of truth for the site's pages, as a tree. This drives BOTH the
-// route table (app/routes.ts builds from it) and the breadcrumb dropdown nav
-// (via the useBreadcrumbs hook), so they can never drift apart. Pure data only
-// (no React imports) so it's safe to import from the build-time routes.ts.
-//
-// `children` nests routes; the breadcrumb shows each level's siblings, so
-// adding nested pages here lights up deeper crumbs automatically.
+// Single source of truth for the site's pages (a tree), driving the route table
+// (routes.ts) and the breadcrumb nav (useBreadcrumbs). Pure data — no React
+// imports — so the build-time routes.ts can import it.
 export interface PageNode {
   /** Full URL path; '/' is the index route. */
   path: string;

@@ -1,8 +1,7 @@
 import { index, layout, type RouteConfig, route } from '@react-router/dev/routes';
 import { PAGES } from './nav';
 
-// Content pages are generated from the shared PAGES registry (see app/nav.ts),
-// so the route table and the breadcrumb nav can never drift apart.
+// Content routes are generated from the shared PAGES registry (app/nav.ts).
 export default [
   layout(
     'routes/_layout.tsx',

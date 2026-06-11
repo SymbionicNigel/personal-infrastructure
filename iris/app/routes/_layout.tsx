@@ -3,10 +3,8 @@ import { Container, styled } from 'styled-system/jsx';
 import { surface } from 'styled-system/recipes';
 import { HeaderBar } from '~/components/layout/header-bar';
 
-// Shared shell for the content pages: sticky header (with breadcrumb dropdown
-// nav attached) + outlet. The flex column fills the viewport so the pistachio
-// <main> reaches the bottom even when content is short. The /health resource
-// route and the splat 404 sit outside this layout.
+// Content shell: sticky header + outlet, in a viewport-filling flex column so
+// the pistachio main reaches the bottom. /health and the splat 404 sit outside.
 export default function AppLayout() {
   return (
     <styled.div display="flex" flexDirection="column" minH="100dvh">

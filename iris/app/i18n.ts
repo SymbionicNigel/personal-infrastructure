@@ -1,6 +1,5 @@
-// Shared i18next config (server middleware + client hydration). English-only
-// for v1; adding a language = drop in app/locales/<lng>/ and extend
-// app/locales/index.ts — no other wiring needed.
+// Shared i18next config (server + client). Add a language by dropping in
+// app/locales/<lng>/ and extending app/locales/index.ts.
 export default {
   supportedLngs: ['en'],
   fallbackLng: 'en',
