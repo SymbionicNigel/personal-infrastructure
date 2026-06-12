@@ -8,7 +8,7 @@ served at `iris.<HOSTNAME_TLD>` in prod and `localhost:3000` in dev. The apex +
 
 - **React Router v7** (SSR, framework mode) on **Vite 8 / Node 24**, ESM.
 - **Panda CSS** (zero-runtime tokens/recipes) + **Park UI** (Ark UI) components,
-  with a salvaged 60s vintage dark palette.
+  with a 60s vintage dark palette.
 - **i18next** + remix-i18next middleware (SSR-aware locale; English seed).
 - **Biome** (lint + format), **Vitest** + React Testing Library.
 - Self-hosted fonts (SIL-OFL, plus one Apache-2.0), synced via `pnpm fonts:sync`

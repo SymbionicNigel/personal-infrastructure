@@ -4,8 +4,7 @@ import cyan from '@park-ui/panda-preset/colors/cyan';
 import sand from '@park-ui/panda-preset/colors/sand';
 
 // Park UI preset supplies the component recipes + accent/gray scales; the
-// salvaged 60s vintage palette (from the old solid/ themes) is layered on top
-// as raw tokens + semantic overrides for the page surfaces and status colors.
+// vintage palette is layered on as tokens + semantic overrides.
 export default defineConfig({
   preflight: true,
   presets: [createPreset({ accentColor: cyan, grayColor: sand, radius: 'sm' })],
@@ -39,8 +38,7 @@ export default defineConfig({
       },
       semanticTokens: {
         colors: {
-          // Repaint Park UI's surface + border tokens with the vintage palette
-          // (dark-only this round, so flat values apply to both color modes).
+          // Repaint Park UI's surface + border tokens with the vintage palette.
           bg: {
             canvas: { value: '{colors.vintage.bg}' },
             default: { value: '{colors.vintage.paper}' },
@@ -53,7 +51,6 @@ export default defineConfig({
           border: {
             default: { value: '{colors.vintage.divider}' },
           },
-          // Status colors map onto the salvaged warning/error/info/success.
           fg: {
             warning: { value: '{colors.vintage.warning}' },
             error: { value: '{colors.vintage.error}' },

@@ -44,7 +44,6 @@ const fontButtonActive = css({
   boxShadow: '0 0 0 1px var(--colors-vintage-primary)',
 });
 
-// Vintage palette swatches (raw values for display).
 const PALETTE = [
   { name: 'bg', hex: '#271e16' },
   { name: 'paper', hex: '#31281d' },

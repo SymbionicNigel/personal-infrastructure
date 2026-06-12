@@ -14,7 +14,8 @@ or email the maintainer. Please do not file public issues for security reports.
   updates for vulnerable dependencies.
 - **Branch protection on `master`** — changes land via pull request;
   force-pushes and deletions are disabled and conversations must be resolved.
-  Required checks are the `astarte-gate` and `deploy-gate` aggregate jobs: each
+  Required checks are the `astarte-gate`, `iris-gate`, and `deploy-gate`
+  aggregate jobs: each
   runs on every PR but only fails when a job its workflow actually triggered
   (service tests/build, or the terraform plan) fails. A PR that triggers no CI
   (e.g. a docs change) passes both gates and merges freely.

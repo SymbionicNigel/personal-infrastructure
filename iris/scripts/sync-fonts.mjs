@@ -1,9 +1,7 @@
 #!/usr/bin/env node
-// Downloads the self-hosted fonts from Google Fonts into public/fonts/ as
-// woff2, plus a bundled public/fonts/LICENSES.txt with each font's license +
-// copyright notice (compliance). Idempotent — re-run `pnpm fonts:sync` to
-// refresh or after editing the registry. The woff2 + LICENSES.txt are
-// committed so Docker/CI builds need no font network.
+// Downloads the self-hosted fonts (+ a bundled LICENSES.txt) from Google Fonts
+// into public/fonts/. Idempotent: `pnpm fonts:sync`. The woff2 + LICENSES.txt
+// are committed, so Docker/CI builds need no font network.
 import { mkdir, rm, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';

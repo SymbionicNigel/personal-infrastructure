@@ -5,7 +5,6 @@ import i18n from '~/i18n';
 import resources from '~/locales';
 import 'i18next';
 
-// Persists the detected/selected locale across requests.
 export const localeCookie = createCookie('lng', {
   path: '/',
   sameSite: 'lax',
@@ -13,8 +12,6 @@ export const localeCookie = createCookie('lng', {
   httpOnly: true,
 });
 
-// Runs on every request: detects the locale (cookie → Accept-Language →
-// fallback) and exposes it + a configured i18next instance via router context.
 export const [i18nextMiddleware, getLocale, getInstance] = createI18nextMiddleware({
   detection: {
     supportedLanguages: [...i18n.supportedLngs],
@@ -25,7 +22,6 @@ export const [i18nextMiddleware, getLocale, getInstance] = createI18nextMiddlewa
   plugins: [initReactI18next],
 });
 
-// Type-safety for the `t` function, using `en` as the source of truth.
 declare module 'i18next' {
   interface CustomTypeOptions {
     defaultNS: 'common';

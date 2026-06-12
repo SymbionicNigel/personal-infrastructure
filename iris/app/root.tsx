@@ -38,7 +38,6 @@ export const links: Route.LinksFunction = () => [
   },
 ];
 
-// Detects the locale on every request and exposes it via router context.
 export const middleware = [i18nextMiddleware];
 
 export async function loader({ context, request }: Route.LoaderArgs) {
@@ -62,7 +61,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
   // <html> so it's correct on first paint — no flash, no inline script.
   const rootData = useRouteLoaderData('root') as { headingFont?: string } | undefined;
   return (
-    // `className="dark"` keeps Park UI's dark scales active (dark-only this round).
+    // `className="dark"` activates Park UI's dark scales.
     <html
       lang={i18n.language}
       dir={i18n.dir(i18n.language)}

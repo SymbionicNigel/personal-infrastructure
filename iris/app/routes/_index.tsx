@@ -8,7 +8,6 @@ export function meta(_: Route.MetaArgs) {
   return [{ title: 'iris' }];
 }
 
-// Paper surface (brown bg + paired text) with a card's border/padding.
 const card = cx(
   surface({ tone: 'paper' }),
   css({ borderWidth: '1px', borderColor: 'border.default', borderRadius: 'lg', p: '6' }),

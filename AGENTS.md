@@ -20,7 +20,8 @@ Prefer per-directory documentation over guessing — these are kept current:
   Stage 1 / Stage 2 deploy, secrets architecture.
 - [dotfile-utils/README.md](./dotfile-utils/README.md) — chezmoi + GPG
   secret workflow.
-- [README.md](./README.md) — host-side setup (local hosts file, certs).
+- [README.md](./README.md) — local bootstrap, prerequisites, module map,
+  and the running list of deferred infrastructure decisions.
 
 ## Conventions worth knowing
 

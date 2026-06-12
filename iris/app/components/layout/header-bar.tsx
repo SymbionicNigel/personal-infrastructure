@@ -7,8 +7,7 @@ import { BreadCrumbs } from '~/components/layout/bread-crumbs';
 // The iris signature: a five-band rainbow rule drawn from the vintage palette.
 const RAINBOW = ['#0288d1', '#669fb2', '#87aa7e', '#edbf02', '#e06c21'];
 
-// Header shrinks from TALL (at the top) to SHORT over the first viewport of
-// scroll; logo + title interpolate alongside.
+// Header shrinks TALL → SHORT over the first viewport of scroll.
 const TALL = 132;
 const SHORT = 64;
 
@@ -56,7 +55,6 @@ export function HeaderBar() {
 
   // Round to whole pixels so the per-frame resize doesn't shimmer on subpixels.
   const height = Math.round(TALL - (TALL - SHORT) * progress);
-  // Keep the mark + title filling most of the (shrinking) header height.
   const logoSize = Math.round(height * 0.85);
   const titlePx = Math.round(height * 0.78);
 
