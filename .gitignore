@@ -20,6 +20,12 @@ terraform.tfstate
 **/*.pyc
 **/.pytest_cache/
 **/dist/
+
+# Node build artifacts (applies to iris/ and any future Node service).
+**/node_modules/
+**/build/
+**/.react-router/
+**/styled-system/
 # --- End of content from original .gitignore ---
 
 # --- Start of chezmoi-managed entries ---

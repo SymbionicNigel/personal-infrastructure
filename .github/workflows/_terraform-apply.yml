@@ -17,10 +17,13 @@ concurrency:
 
 jobs:
   apply:
+    # Surface real applies in the GitHub Environments/Deployments tab; read-only
+    # PR plans resolve to an empty name, so no deployment is recorded.
+    environment: ${{ !inputs.plan_only && inputs.label || '' }}
     runs-on: ubuntu-latest
     steps:
-      # Empty ref = the triggering ref. workflow_run callers pin the built SHA
-      # so the checked-out compose/terraform matches the image being deployed.
+      # Empty ref = the triggering ref. A caller may pin a specific SHA so the
+      # checked-out compose/terraform matches the image being deployed.
       - uses: actions/checkout@v6
         with:
           ref: ${{ inputs.ref }}
@@ -171,5 +174,6 @@ on:
 
 permissions:
   contents: read
+  deployments: write
 
 run-name: ${{ inputs.plan_only && 'plan' || 'apply' }} ${{ inputs.label }}

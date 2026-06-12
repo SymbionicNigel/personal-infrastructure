@@ -35,6 +35,19 @@ services:
       # rebuilding the image.
       - ../astarte/src:/app/src
 
+  iris:
+    build:
+      context: ../iris
+      target: dev
+    image: iris:dev
+    ports:
+      - '3000:3000'
+    volumes:
+      # Host source bind-mounted over /app/app so `react-router dev` HMR picks
+      # up edits without rebuilding (node_modules + styled-system stay in the
+      # image). Traefik redirect labels are inert locally (no local proxy).
+      - ../iris/app:/app/app
+
   janus:
     ports:
       - '8080:80'

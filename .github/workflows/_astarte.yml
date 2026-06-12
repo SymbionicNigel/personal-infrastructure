@@ -1,0 +1,66 @@
+# Reusable astarte CI: test then build+push. Called by ci.yml (gated on astarte
+# changes); push_image is false for PR validation builds.
+concurrency:
+  cancel-in-progress: false
+  group: astarte-${{ github.ref }}
+
+jobs:
+  build-and-push:
+    needs: test
+    secrets: inherit
+    uses: ./.github/workflows/_build-push.yml
+    with:
+      context: astarte
+      push_image: ${{ inputs.push_image }}
+      service: astarte
+
+  test:
+    defaults:
+      run:
+        working-directory: astarte
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: astral-sh/setup-uv@v8.2.0
+        with:
+          cache-dependency-glob: astarte/uv.lock
+          enable-cache: true
+
+      - run: uv sync --frozen
+
+      - run: uv run ruff check
+
+      - run: uv run ruff format --check
+
+      - run: uv run pytest
+
+      # Fail the build if any dep ships under a non-permissive license.
+      # The repo is Apache-2.0; copyleft (GPL/AGPL) and source-available
+      # (SSPL/BUSL) deps would create distribution conflicts.
+      # List carries both classifier and SPDX spellings (e.g. "MIT
+      # License" and "MIT") plus compound SPDX exprs ("X OR Y").
+      - name: license audit
+        run: >
+          uv run pip-licenses --allow-only='Apache Software
+          License;Apache 2.0;Apache-2.0;BSD
+          License;BSD-2-Clause;BSD-3-Clause;0BSD;ISC License
+          (ISCL);ISC;MIT License;MIT;Mozilla Public License 2.0 (MPL
+          2.0);MPL-2.0;Python Software Foundation
+          License;PSF-2.0;The Unlicense (Unlicense);Unlicense;Apache-2.0
+          OR BSD-2-Clause'
+
+name: _astarte
+
+on:
+  workflow_call:
+    inputs:
+      push_image:
+        default: false
+        description: Push to GHCR + record ASTARTE_IMAGE_TAG. False = build-only validation (PRs).
+        required: false
+        type: boolean
+
+permissions:
+  contents: read
+  packages: write

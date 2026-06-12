@@ -1,0 +1,67 @@
+# Reusable iris CI: test then build+push. Called by ci.yml (gated on iris
+# changes); the push_image input is false for PR validation builds.
+concurrency:
+  cancel-in-progress: false
+  group: iris-${{ github.ref }}
+
+jobs:
+  build-and-push:
+    needs: test
+    secrets: inherit
+    uses: ./.github/workflows/_build-push.yml
+    with:
+      context: iris
+      push_image: ${{ inputs.push_image }}
+      service: iris
+
+  test:
+    defaults:
+      run:
+        working-directory: iris
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          package_json_file: iris/package.json
+
+      - uses: actions/setup-node@v6
+        with:
+          cache: pnpm
+          cache-dependency-path: iris/pnpm-lock.yaml
+          node-version: 24
+
+      - run: pnpm install --frozen-lockfile
+
+      - run: pnpm typecheck
+
+      - run: pnpm lint
+
+      - run: pnpm test
+
+      - run: pnpm build
+
+      # Fail the build if any prod dependency ships under a non-permissive
+      # license. The repo is Apache-2.0; copyleft (GPL/AGPL) and source-available
+      # (SSPL/BUSL) deps would create distribution conflicts.
+      - name: license audit
+        run: >
+          pnpm dlx license-checker-rseidelsohn --production --excludePrivatePackages
+          --onlyAllow 'MIT;Apache-2.0;BSD-2-Clause;BSD-3-Clause;0BSD;ISC;Unlicense;MPL-2.0;CC0-1.0;Python-2.0'
+
+name: _iris
+
+on:
+  workflow_call:
+    inputs:
+      push_image:
+        default: false
+        description: Push to GHCR + record IRIS_IMAGE_TAG. False = build-only validation (PRs).
+        required: false
+        type: boolean
+
+permissions:
+  contents: read
+  packages: write

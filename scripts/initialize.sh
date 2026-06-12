@@ -5,14 +5,27 @@ set -euo pipefail
 
 REPO_ROOT="$(git -C "$(dirname "$0")" rev-parse --show-toplevel)"
 
-# --- pnpm (frontend) ---
-if ! command -v pnpm >/dev/null 2>&1; then
+# --- pnpm + Node 24 (frontend) ---
+# pnpm must be the *standalone* build for `pnpm env` to manage Node; a pnpm
+# installed via npm/nvm/corepack errors with ERR_PNPM_CANNOT_MANAGE_NODE.
+install_standalone_pnpm() {
   curl -fsSL https://get.pnpm.io/install.sh | sh -
   # shellcheck disable=SC1090
   source ~/.bashrc 2>/dev/null || true
-  pnpm env use --global 16
+  hash -r # drop any cached path to the previous pnpm
+}
+if ! command -v pnpm >/dev/null 2>&1; then
+  install_standalone_pnpm
 else
   echo "pnpm already installed: $(pnpm --version)"
+fi
+# Pin the Node runtime pnpm manages to 24 (matches iris + CI). If the existing
+# pnpm can't manage Node (non-standalone install), swap in the standalone build
+# and retry. Idempotent.
+if ! pnpm env use --global 24; then
+  echo "pnpm cannot manage Node; installing standalone pnpm and retrying..."
+  install_standalone_pnpm
+  pnpm env use --global 24
 fi
 
 # --- uv (Python services) ---
@@ -59,4 +72,12 @@ while IFS= read -r pyproject; do
   (cd "$service_dir" && uv sync)
 done < <(find "$REPO_ROOT" -maxdepth 2 -name pyproject.toml -not -path '*/node_modules/*')
 
-# TODO: install node packages for solid folder
+# --- Node project install (each top-level package.json) ---
+# Installs node_modules and runs each package's prepare script (e.g. iris's
+# panda codegen) for every frontend service. New Node services get picked up
+# automatically without touching this script.
+while IFS= read -r pkgjson; do
+  service_dir="$(dirname "$pkgjson")"
+  echo "pnpm install in ${service_dir#"$REPO_ROOT"/}"
+  (cd "$service_dir" && pnpm install)
+done < <(find "$REPO_ROOT" -maxdepth 2 -name package.json -not -path '*/node_modules/*')

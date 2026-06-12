@@ -10,24 +10,22 @@ See [NOTICE](./NOTICE) for the full disclaimer and [LICENSE](./LICENSE)
 
 ## Dev Setup
 
-1. Need to add subdomains to `/etc/hosts` on Linux and `C:\Windows\System32\drivers\etc\hosts` on Windows so that subdomain testing will work
-   - astarte.localhost - FastAPI backend (Phoenician goddess of beauty; the public-facing presence of the Phoenician pantheon)
-   - enki.localhost - gitlab
-   - hendrix.localhost - traefik
-   - janus.localhost - whoami (Roman two-faced god of beginnings, doorways, and transitions)
-   - vulcan.localhost - dokploy console - Roman god of the forge, craftsmen, and builders
-   - IN NEED OF SERVICE
-     - mimir - Norse god of knowledge.  Good for observation or knowledgebase
-     - iris - Greek messenger goddess, rainbow personified, the visible link between gods and mortals
-     - selene - Greek moon goddess; the visible face of the night sky
-     - ptah — Egyptian creator god and patron of craftsmen and architects.
-     - inanna — Sumerian goddess of love and war, predecessor to Astarte/Ishtar. Keeps the Mesopotamian thread you started with Enki.
-     - daedalus — the master craftsman and architect. Built the labyrinth, designed wings.
-     - anubis — Egyptian guide of souls.
+Hostname conventions used by the stack (each subdomain hangs off the
+configured `HOSTNAME_TLD`):
 
-1. To run Traefik and use https run the following command to create tls certificates for https to work properly
-
-   ```openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout traefik/local_certs/traefik-selfsigned.key -out traefik/local_certs/traefik-selfsigned.crt -subj "/CN=*.<desired_local_domain_name>"```
+- astarte - FastAPI backend - Phoenician goddess of beauty
+- iris - React Router v7 web frontend - Greek messenger goddess
+- janus - whoami (Roman two-faced god of beginnings, doorways, and transitions)
+- vulcan - dokploy console - Roman god of the forge, craftsmen, and builders
+- IN NEED OF SERVICE:
+    - enki - Planned for gitlab - Sumerian god of crafts, knowledge, and creation
+    - hendrix - Reference to crosstown traffic, would be for accessing the traefik server inside dokploy
+    - mimir - Norse god of knowledge.  Good for observation or knowledgebase
+    - selene - Greek moon goddess; the visible face of the night sky
+    - ptah — Egyptian creator god and patron of craftsmen and architects.
+    - inanna — Sumerian goddess of love and war, predecessor to Astarte/Ishtar.
+    - daedalus — the master craftsman and architect. Built the labyrinth, designed wings.
+    - anubis — Egyptian guide of souls.
 
 ## Production runtime
 
@@ -40,26 +38,38 @@ handles routing and TLS; application services are defined in the root
 ## Modules
 
 1. [Linode](./linode/README.md) - Terraform based IAC
-2. [Solid](./solid/SOLIDSTART_README.md) - SolidStart web frontend
+2. [Iris](./iris/README.md) - React Router v7 web frontend (Node, pnpm-managed)
 3. [Astarte](./astarte/README.md) - FastAPI backend (Python, uv-managed)
-4. [Scripts](./scripts/README.md) - Scripts for building and developing in personal-infrastructure
 
-Required CLI packages and initializing commands:
+## Bootstrap
 
-<!-- TODO: give install commands, possibly adding a script -->
-<!-- TODO: include links to documentation -->
+Run these two idempotent scripts from the repo root:
 
-- Docker / Docker Compose
-- [terraform](https://developer.hashicorp.com/terraform/tutorials/aws-get-started/install-cli)
-- [chezmoi](https://www.chezmoi.io/) — dotfile / secret management
-- [GnuPG](https://gnupg.org/) — encrypts secrets handled by chezmoi
-- [Bitwarden CLI (`bw`)](https://bitwarden.com/help/cli/) — unlocks the
-  vault used by the GPG/SSH workflow
-- [Linode-Cli](https://github.com/linode/linode-cli)
-    - `linode-cli configure --token`
-- [pnpm](https://pnpm.io/) — frontend package manager
-- [uv](https://docs.astral.sh/uv/) — Python package + project manager (for `astarte/` and future Python services)
-- node
+```sh
+./dotfile-utils/bootstrap.sh   # chezmoi, secrets submodule, dotfiles
+./scripts/initialize.sh        # gh, bw, pnpm + Node 24, uv, service syncs
+```
+
+Together they install
+[chezmoi](https://www.chezmoi.io/),
+[gh](https://cli.github.com/),
+[Bitwarden CLI](https://bitwarden.com/help/cli/),
+[pnpm](https://pnpm.io/) (managing [Node.js](https://nodejs.org/) 24),
+and [uv](https://docs.astral.sh/uv/),
+then `pnpm install` / `uv sync` every service in the repo.
+
+Install these yourself first — the scripts assume they exist:
+
+- [git](https://git-scm.com/) with an SSH key registered on GitHub
+- [GnuPG](https://gnupg.org/) — chezmoi uses it to decrypt secrets
+- [Docker / Docker Compose](https://docs.docker.com/engine/install/) —
+  for the local compose stack
+
+Only needed when touching `linode/`:
+
+- [Terraform](https://developer.hashicorp.com/terraform/install)
+- [Linode CLI](https://github.com/linode/linode-cli), configured via
+  `linode-cli configure --token`
 
 ## Future Decisions
 
@@ -84,7 +94,9 @@ checking. `docker logs --tail` is the only debugging tool today. Plausible
 first cut: Loki + Grafana (deployed as a Dokploy compose stack) for log
 storage and dashboards, plus `blackbox_exporter` (or an external service)
 hitting wildcard subdomains for uptime. Pick before the second service
-ships, because correlating two services with no log store is painful.
+ships, because correlating two services with no log store is painful. Also
+wanted: error tracking (client + server) via a self-hosted Sentry/GlitchTip,
+so iris's browser + SSR errors surface without grepping container logs.
 
 ### Persistent data tier
 
@@ -94,14 +106,6 @@ database per service, shared backups. Per-service Postgres containers
 multiply the backup matrix without much isolation benefit on a
 single-host deployment. Decide concretely (instance type, version pin,
 backup strategy) before the first DB-backed service lands.
-
-### Apex redirect + catch-all 404 router
-
-`symbionic.tech` (no subdomain) currently has no defined behavior. Once a
-user-facing service ships, we'll want either a redirect to a canonical
-host (e.g., `www.symbionic.tech`) or a static landing page. A catch-all
-router for undefined subdomains serving a 404 is similarly cosmetic but
-worth doing once UI work begins.
 
 ### Billing alerts
 

@@ -1,3 +1,3 @@
 {
-    "$comment": "Permissive (matches anything). Mapped to .github/workflows/* in settings.json so redhat.vscode-yaml stops applying the GitHub Workflow schema, whose workflow_run definition trips its validator (false 'Property not allowed' / 513). github.vscode-github-actions validates workflows instead."
+    "$comment": "Permissive (matches anything). Mapped in settings.json to files where redhat.vscode-yaml applies a stale SchemaStore schema that emits false 'Property not allowed' / 513 errors: (1) .github/workflows/* (GitHub Workflow schema's workflow_run definition; github.vscode-github-actions validates these instead) and (2) pnpm-workspace.yaml (schema predates pnpm 11's allowBuilds key, which pnpm itself writes)."
 }

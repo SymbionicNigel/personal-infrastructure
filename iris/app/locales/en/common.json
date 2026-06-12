@@ -1,0 +1,21 @@
+{
+  "appName": "iris",
+  "tagline": "the visible link between gods and mortals",
+  "nav": {
+    "home": "Home",
+    "styleguide": "Styleguide"
+  },
+  "home": {
+    "title": "iris",
+    "intro": "The visible face of the stack — a small messenger between services and the people who use them."
+  },
+  "styleguide": {
+    "title": "Styleguide",
+    "intro": "Design tokens, type, and components — the building blocks of iris.",
+    "headingFont": "Heading font"
+  },
+  "notFound": {
+    "title": "404",
+    "message": "This page drifted off the end of the rainbow."
+  }
+}

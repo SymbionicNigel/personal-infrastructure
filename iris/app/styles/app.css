@@ -1,0 +1,123 @@
+@layer reset, base, tokens, recipes, utilities;
+
+/* Self-hosted fonts (all SIL-OFL except Yellowtail, Apache-2.0) — see
+   public/fonts/LICENSES.txt. Files are synced via `pnpm fonts:sync`. */
+
+@font-face {
+  font-family: "Sacramento";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/sacramento.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Aladin";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/aladin.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Freckle Face";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/freckle-face.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Yellowtail";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/yellowtail.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Kaushan Script";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/kaushan-script.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Grand Hotel";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/grand-hotel.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Space Grotesk";
+  font-style: normal;
+  font-weight: 300 700;
+  font-display: swap;
+  src: url("/fonts/space-grotesk.woff2") format("woff2");
+}
+
+@layer base {
+  :root {
+    /* Heading face options (switchable on /styleguide). */
+    --font-sacramento: "Sacramento", cursive;
+    --font-aladin: "Aladin", cursive;
+    --font-freckle-face: "Freckle Face", cursive;
+    --font-yellowtail: "Yellowtail", cursive;
+    --font-kaushan-script: "Kaushan Script", cursive;
+    --font-grand-hotel: "Grand Hotel", cursive;
+
+    --font-heading: var(--font-yellowtail);
+    /* default groovy heading */
+    --font-body: "Space Grotesk", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  }
+
+  /* The styleguide switcher sets data-heading-font on <html>. */
+  [data-heading-font="sacramento"] {
+    --font-heading: var(--font-sacramento);
+  }
+
+  [data-heading-font="aladin"] {
+    --font-heading: var(--font-aladin);
+  }
+
+  [data-heading-font="freckle-face"] {
+    --font-heading: var(--font-freckle-face);
+  }
+
+  [data-heading-font="yellowtail"] {
+    --font-heading: var(--font-yellowtail);
+  }
+
+  [data-heading-font="kaushan-script"] {
+    --font-heading: var(--font-kaushan-script);
+  }
+
+  [data-heading-font="grand-hotel"] {
+    --font-heading: var(--font-grand-hotel);
+  }
+
+  html {
+    /* The sticky header resizes on scroll; without this, scroll anchoring
+       counter-adjusts the scroll position and the header jitters. */
+    overflow-anchor: none;
+  }
+
+  body {
+    background-color: var(--colors-bg-canvas);
+    color: var(--colors-fg-default);
+    font-family: var(--font-body);
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-family: var(--font-heading);
+  }
+}
