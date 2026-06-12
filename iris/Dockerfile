@@ -11,7 +11,7 @@
 # are non-interactive; `prepare` (panda codegen) runs during install.
 
 # --- dev: HMR server, source bind-mounted by the compose override ---
-FROM node:24-slim AS dev
+FROM node:26-slim AS dev
 WORKDIR /app
 RUN corepack enable
 COPY . .
@@ -21,7 +21,7 @@ EXPOSE 3000
 CMD ["pnpm", "dev", "--host"]
 
 # --- build: produce the production server + client bundles ---
-FROM node:24-slim AS build
+FROM node:26-slim AS build
 WORKDIR /app
 RUN corepack enable
 COPY . .
@@ -29,7 +29,7 @@ RUN pnpm install --frozen-lockfile
 RUN pnpm build
 
 # --- runtime: slim prod image, prod deps only, no source/build tooling ---
-FROM node:24-slim AS runtime
+FROM node:26-slim AS runtime
 WORKDIR /app
 ENV NODE_ENV=production
 RUN corepack enable
