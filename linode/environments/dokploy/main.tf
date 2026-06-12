@@ -79,9 +79,10 @@ resource "dokploy_compose" "stack" {
 }
 
 # The provider's Update saves the compose but never redeploys, so a bumped image
-# tag wouldn't roll out. Replicate its deploy call on every content change.
+# tag wouldn't roll out. Replicate its deploy call whenever the rendered content
+# changes -- keyed on a content hash (not the raw compose) for a clean trigger.
 resource "terraform_data" "redeploy" {
-  triggers_replace = local.compose_content
+  triggers_replace = sha256(local.compose_content)
 
   provisioner "local-exec" {
     environment = {
