@@ -25,10 +25,7 @@ completion/threshold events.
 ### Decisions and rejected alternatives
 
 - **Ingestion lives inside `astarte`, not a new service.** astarte is already
-  the FastAPI backend; a separate `mimir` deployment is premature ops overhead
-  at personal scale. Connector boundaries are kept clean so ingestion *can*
-  graduate to a standalone `mimir` service later if its runtime profile ever
-  justifies it. The `mimir` hostname stays in reserve.
+  the FastAPI backend;
 - **PrusaLink over OctoPrint / Prusa Connect.** PrusaLink runs on the printer
   itself (local REST API, API-key auth), needs no extra hardware, and is
   poll-only. The Masterbuilt is also poll-only, so both first connectors share
