@@ -1,40 +1,100 @@
 import { useEffect, useState } from 'react';
-import { Link, useRouteLoaderData } from 'react-router';
-import { css } from 'styled-system/css';
+import { Link } from 'react-router';
+import { sva } from 'styled-system/css';
 import { Box, Container, Flex, styled } from 'styled-system/jsx';
 import { BreadCrumbs } from '~/components/layout/bread-crumbs';
 
 // The iris signature: a five-band rainbow rule drawn from the vintage palette.
 const RAINBOW = ['#0288d1', '#669fb2', '#87aa7e', '#edbf02', '#e06c21'];
 
-// Header shrinks TALL → SHORT over the first viewport of scroll.
-const TALL = 132;
-const SHORT = 64;
+// Display-only: capitalize the first character of every dot-separated label
+// (example.com → Example.Com). The host stays raw in the loader.
+export function titleCaseHost(host: string): string {
+  return host
+    .split('.')
+    .map((label) => (label ? label[0].toUpperCase() + label.slice(1) : label))
+    .join('.');
+}
 
-function IrisMark({ size }: { size: number }) {
+// Masthead geometry as a Panda slot recipe: `base` is the phone size, `md` the
+// desktop size (default breakpoints — no panda.config change). The row height
+// interpolates --mh-tall → --mh-short by --mh-progress, the only runtime value,
+// which JS sets from scroll; logo + title derive from that height in CSS.
+const masthead = sva({
+  slots: ['root', 'row', 'link', 'logo', 'title'],
+  base: {
+    root: {
+      '--mh-tall': { base: '88px', md: '132px' },
+      '--mh-short': { base: '56px', md: '64px' },
+      '--mh-h': 'calc(var(--mh-tall) - (var(--mh-tall) - var(--mh-short)) * var(--mh-progress))',
+      position: 'sticky',
+      top: '0',
+      zIndex: '40',
+      bg: 'bg.default',
+      borderBottomWidth: '1px',
+      borderColor: 'border.default',
+    },
+    row: {
+      display: 'flex',
+      alignItems: 'center',
+      // Left-aligned on phones (per design), centered from md up.
+      justifyContent: { base: 'flex-start', md: 'center' },
+      minWidth: '0',
+      // minHeight (not height) so the masthead can grow when the icon + title
+      // wrap to two lines on a narrow screen rather than overflowing.
+      minHeight: 'var(--mh-h)',
+      // Pull back half the Container's px="6" gutter on phones so the icon sits
+      // near the edge with a little padding; restored to aligned-with-content
+      // from md up.
+      marginLeft: { base: '-3', md: '0' },
+    },
+    link: {
+      display: 'inline-flex',
+      alignItems: 'center',
+      // Wrap the icon + title as whole units when they don't fit one line; the
+      // title keeps white-space:nowrap so the domain text itself never breaks.
+      flexWrap: 'wrap',
+      gap: '3',
+      minWidth: '0',
+      color: 'fg.default',
+    },
+    logo: { boxSize: 'calc(var(--mh-h) * 0.85)', flexShrink: 0 },
+    title: {
+      fontFamily: 'heading',
+      lineHeight: '1',
+      whiteSpace: 'nowrap',
+      // Proportional to the masthead height so it tracks the icon; sits at 0.78×
+      // the row height at both breakpoints (which differ via --mh-tall/short).
+      fontSize: 'calc(var(--mh-h) * 0.78)',
+    },
+  },
+});
+
+function IrisMark({ className }: { className?: string }) {
   return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 32 32"
-      aria-hidden="true"
-      style={{ flexShrink: 0 }}
-    >
-      <rect width="32" height="32" rx="7" fill="#271e16" />
-      <circle cx="16" cy="16" r="14" fill="#e06c21" />
-      <circle cx="16" cy="16" r="11" fill="#edbf02" />
-      <circle cx="16" cy="16" r="8" fill="#87aa7e" />
-      <circle cx="16" cy="16" r="5.2" fill="#669fb2" />
-      <circle cx="16" cy="16" r="2.3" fill="#271e16" />
-    </svg>
+    <Box className={className}>
+      <svg
+        viewBox="0 0 32 32"
+        aria-hidden="true"
+        style={{ width: '100%', height: '100%', display: 'block' }}
+      >
+        <rect width="32" height="32" rx="7" fill="#271e16" />
+        <circle cx="16" cy="16" r="14" fill="#e06c21" />
+        <circle cx="16" cy="16" r="11" fill="#edbf02" />
+        <circle cx="16" cy="16" r="8" fill="#87aa7e" />
+        <circle cx="16" cy="16" r="5.2" fill="#669fb2" />
+        <circle cx="16" cy="16" r="2.3" fill="#271e16" />
+      </svg>
+    </Box>
   );
 }
 
-export function HeaderBar() {
-  const root = useRouteLoaderData('root') as { host?: string } | undefined;
-  const host = root?.host ?? 'iris';
+export function HeaderBar({ host }: { host: string }) {
+  const title = titleCaseHost(host);
+  const ui = masthead();
 
-  // 0 at the top → 1 once half a viewport has been scrolled (shrinks at 2× rate).
+  // 0 at the top → 1 once half a viewport has scrolled (shrinks at 2× rate).
+  // Client-only; SSR seeds 0 (tall), corrected on mount.
   const [progress, setProgress] = useState(0);
   useEffect(() => {
     let raf = 0;
@@ -53,47 +113,20 @@ export function HeaderBar() {
     };
   }, []);
 
-  // Round to whole pixels so the per-frame resize doesn't shimmer on subpixels.
-  const height = Math.round(TALL - (TALL - SHORT) * progress);
-  const logoSize = Math.round(height * 0.85);
-  const titlePx = Math.round(height * 0.78);
-
   return (
-    <styled.header
-      position="sticky"
-      top="0"
-      zIndex="40"
-      bg="bg.default"
-      borderBottomWidth="1px"
-      borderColor="border.default"
-    >
+    <header className={ui.root} style={{ '--mh-progress': progress } as React.CSSProperties}>
       <Flex height="3px" aria-hidden="true">
         {RAINBOW.map((color) => (
           <Box key={color} flex="1" style={{ backgroundColor: color }} />
         ))}
       </Flex>
       <Container maxW="5xl" px="6">
-        <Flex align="center" justify="center" style={{ height: `${height}px` }}>
-          <Link
-            to="/"
-            className={css({
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '3',
-              color: 'fg.default',
-            })}
-          >
-            <IrisMark size={logoSize} />
-            <styled.span
-              fontFamily="heading"
-              lineHeight="1"
-              whiteSpace="nowrap"
-              style={{ fontSize: `${titlePx}px` }}
-            >
-              {host}
-            </styled.span>
+        <div className={ui.row}>
+          <Link to="/" className={ui.link}>
+            <IrisMark className={ui.logo} />
+            <span className={ui.title}>{title}</span>
           </Link>
-        </Flex>
+        </div>
       </Container>
       {/* Dark breadcrumb row attached to the header bottom (constant height,
           sticks with the header as the masthead shrinks). The masthead's bottom
@@ -103,6 +136,6 @@ export function HeaderBar() {
           <BreadCrumbs />
         </Container>
       </styled.div>
-    </styled.header>
+    </header>
   );
 }

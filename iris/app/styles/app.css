@@ -73,6 +73,11 @@
     /* default groovy heading */
     --font-body: "Space Grotesk", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
     --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+
+    /* Scrollbar thumb color, travelled through the masthead's five-band rainbow
+       as the page scrolls (root.tsx sets it from scroll position). Seeded with
+       the top-of-page band for first paint before JS runs. */
+    --iris-scroll-color: #0288d1;
   }
 
   /* The styleguide switcher sets data-heading-font on <html>. */
@@ -110,6 +115,36 @@
     background-color: var(--colors-bg-canvas);
     color: var(--colors-fg-default);
     font-family: var(--font-body);
+  }
+
+  /* Vintage scrollbar — a solid thumb in --iris-scroll-color, which root.tsx
+     shifts through the rainbow as you scroll. Firefox uses the standard
+     scrollbar-color (scoped via -moz-appearance so Chrome 121+ doesn't adopt it
+     and skip the ::-webkit-scrollbar styling below). */
+  @supports (-moz-appearance: none) {
+    html {
+      scrollbar-width: thin;
+      scrollbar-color: var(--iris-scroll-color) var(--colors-bg-canvas);
+    }
+  }
+
+  /* WebKit/Blink: a slim thumb floating in the dark track, inset by a
+     transparent padding-box border. Color comes from the same scroll variable. */
+  ::-webkit-scrollbar {
+    width: 12px;
+    height: 12px;
+  }
+
+  ::-webkit-scrollbar-track,
+  ::-webkit-scrollbar-corner {
+    background-color: var(--colors-bg-canvas);
+  }
+
+  ::-webkit-scrollbar-thumb {
+    border: 3px solid transparent;
+    border-radius: 999px;
+    background-clip: padding-box;
+    background-color: var(--iris-scroll-color);
   }
 
   h1,
