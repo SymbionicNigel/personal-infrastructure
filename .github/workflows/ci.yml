@@ -97,8 +97,12 @@ jobs:
           } >> "$GITHUB_OUTPUT"
 
   # Render + deploy the compose stack from the collected tags, after the host
-  # converges. Default needs-gating: skipped if collect/prod skipped or failed.
+  # converges. Gated on collect (which carries the event/change conditions);
+  # prod stays in needs only for ordering. Keying on prod via the default
+  # success() gate would wrongly skip this whenever prod's terminal apply job is
+  # skipped (every PR under plan_only, and any no-op apply on push).
   dokploy:
+    if: ${{ !cancelled() && !contains(needs.*.result, 'failure') && needs.collect.result == 'success' }}
     needs: [collect, prod]
     secrets: inherit
     uses: ./.github/workflows/_terraform-apply.yml
