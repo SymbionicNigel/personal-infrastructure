@@ -59,16 +59,9 @@ resource "linode_instance" "dokploy_main" {
   }
 
   # Block until cloud-init finishes and the Dokploy API key sentinel exists.
-  # Tails /var/log/cloud-init-output.log in the background so every line of
-  # user_data.sh streams into `terraform apply` output in real time —
-  # otherwise this step is a silent ~5-minute black box.
   provisioner "remote-exec" {
     inline = [
-      "touch /var/log/cloud-init-output.log",
-      "tail -n +1 -F /var/log/cloud-init-output.log & TAIL_PID=$!",
       "cloud-init status --wait || STATUS_RC=$?",
-      "sleep 1",
-      "kill $TAIL_PID >/dev/null 2>&1 || true",
       "test -s /root/.dokploy-api-key",
       "exit $${STATUS_RC:-0}"
     ]
