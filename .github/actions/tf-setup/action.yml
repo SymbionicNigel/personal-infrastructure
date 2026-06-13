@@ -1,0 +1,77 @@
+# Shared setup for the linode TF plan + apply jobs in _terraform-apply.yml.
+# Assumes the repo is already checked out.
+description: Submodules, GPG, chezmoi-materialized secrets, and Terraform for linode TF ops.
+
+inputs:
+  bw_clientid:
+    description: Bitwarden client id for non-interactive unlock.
+    required: true
+  bw_clientsecret:
+    description: Bitwarden client secret for non-interactive unlock.
+    required: true
+  bw_password:
+    description: Bitwarden master password for non-interactive unlock.
+    required: true
+  ci_pat:
+    description: User PAT — reads the private .secrets submodule and `gh api user`.
+    required: true
+  github_token:
+    description: GITHUB_TOKEN for `gh release` lookups during installs.
+    required: true
+  gpg_private_key:
+    description: GPG private key (no passphrase) for chezmoi-managed secrets.
+    required: true
+
+name: tf-setup
+
+runs:
+  steps:
+    # SSH->HTTPS rewrite so the PAT can reach the private .secrets repo.
+    - env:
+        CI_PAT: ${{ inputs.ci_pat }}
+      name: Checkout submodules
+      run: |
+        git config --global url."https://x-access-token:${CI_PAT}@github.com/".insteadOf "git@github.com:"
+        git submodule sync --recursive
+        git submodule update --init --recursive
+      shell: bash
+
+    - name: Import GPG key
+      uses: crazy-max/ghaction-import-gpg@v7
+      with:
+        gpg_private_key: ${{ inputs.gpg_private_key }}
+
+    - env:
+        GH_TOKEN: ${{ inputs.github_token }}
+      name: Install Bitwarden CLI
+      run: bash dotfile-utils/scripts/install_bw_cli.sh
+      shell: bash
+
+    - env:
+        CHEZMOI_FORK_USER: ${{ github.repository_owner }}
+        CI: "true"
+        GH_TOKEN: ${{ inputs.github_token }}
+      name: Install chezmoi
+      run: |
+        bash dotfile-utils/scripts/install_chezmoi.sh
+        echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+      shell: bash
+
+    # GH_TOKEN must be the user PAT: the chezmoi template's `gh api user` call
+    # 403s for the installation GITHUB_TOKEN.
+    - env:
+        BW_CLIENTID: ${{ inputs.bw_clientid }}
+        BW_CLIENTSECRET: ${{ inputs.bw_clientsecret }}
+        BW_PASSWORD: ${{ inputs.bw_password }}
+        GH_TOKEN: ${{ inputs.ci_pat }}
+      name: chezmoi apply (Bitwarden-unlocked)
+      run: |
+        source dotfile-utils/scripts/source_bitwarden_session.sh
+        chezmoi apply --no-tty --config ./.chezmoi.toml
+      shell: bash
+
+    - name: Install Terraform
+      uses: hashicorp/setup-terraform@v4
+      with:
+        terraform_wrapper: false
+  using: composite

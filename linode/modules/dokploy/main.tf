@@ -43,6 +43,7 @@ resource "linode_instance" "dokploy_main" {
   metadata {
     user_data = base64encode(templatefile("${path.module}/user_data.sh", {
       HOSTNAME_TLD        = var.HOSTNAME_TLD
+      DEPLOY_USER         = var.deploy_user
       DOKPLOY_ADMIN_EMAIL = var.DOKPLOY_ADMIN_EMAIL
       # TODO: See what we can do to remove the admin password from the file created here and stored in the linode's metadata permanently
       DOKPLOY_ADMIN_PASSWORD = var.DOKPLOY_ADMIN_PASSWORD
@@ -58,16 +59,9 @@ resource "linode_instance" "dokploy_main" {
   }
 
   # Block until cloud-init finishes and the Dokploy API key sentinel exists.
-  # Tails /var/log/cloud-init-output.log in the background so every line of
-  # user_data.sh streams into `terraform apply` output in real time —
-  # otherwise this step is a silent ~5-minute black box.
   provisioner "remote-exec" {
     inline = [
-      "touch /var/log/cloud-init-output.log",
-      "tail -n +1 -F /var/log/cloud-init-output.log & TAIL_PID=$!",
       "cloud-init status --wait || STATUS_RC=$?",
-      "sleep 1",
-      "kill $TAIL_PID >/dev/null 2>&1 || true",
       "test -s /root/.dokploy-api-key",
       "exit $${STATUS_RC:-0}"
     ]
@@ -76,7 +70,7 @@ resource "linode_instance" "dokploy_main" {
   # Retrieve the API key to a local file for Stage 2
   provisioner "local-exec" {
     interpreter = ["bash", "-c"]
-    command     = "ssh -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile=/dev/null -i ${path.root}/id_ed25519 symbionic_dokploy_user@${one(self.ipv4)} sudo cat /root/.dokploy-api-key > ${path.root}/.dokploy-api-key"
+    command     = "ssh -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile=/dev/null -i ${path.root}/id_ed25519 ${var.deploy_user}@${one(self.ipv4)} sudo cat /root/.dokploy-api-key > ${path.root}/.dokploy-api-key"
   }
 
   lifecycle {

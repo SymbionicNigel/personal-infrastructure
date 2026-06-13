@@ -40,7 +40,7 @@ provider "dokploy" {
 }
 
 resource "dokploy_project" "main" {
-  name        = "symbionic-services"
+  name        = var.DOKPLOY_PROJECT_NAME
   description = "Primary services managed by Terraform"
 }
 

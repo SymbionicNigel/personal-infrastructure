@@ -101,12 +101,12 @@ resource "null_resource" "configure_main" {
   connection {
     type        = "ssh"
     host        = var.instance_ip
-    user        = "symbionic_dokploy_user"
+    user        = var.deploy_user
     private_key = file("${path.root}/id_ed25519")
   }
 
   provisioner "file" {
-    destination = "/home/symbionic_dokploy_user/.dokploy-traefik-main.yml"
+    destination = "/home/${var.deploy_user}/.dokploy-traefik-main.yml"
     content     = local.traefik_yaml
   }
 
@@ -118,17 +118,17 @@ resource "null_resource" "configure_main" {
       sudo test -s /root/.dokploy-api-key
       API_KEY=$(sudo cat /root/.dokploy-api-key)
 
-      jq -Rn --rawfile yaml /home/symbionic_dokploy_user/.dokploy-traefik-main.yml \
+      jq -Rn --rawfile yaml /home/${var.deploy_user}/.dokploy-traefik-main.yml \
         '{json: {traefikConfig: $yaml}}' \
-        > /home/symbionic_dokploy_user/.dokploy-traefik-main.json
+        > /home/${var.deploy_user}/.dokploy-traefik-main.json
 
       curl -sf -X POST "http://localhost:3000/api/trpc/settings.updateTraefikConfig" \
         -H 'Content-Type: application/json' \
         -H "x-api-key: $API_KEY" \
-        --data @/home/symbionic_dokploy_user/.dokploy-traefik-main.json
+        --data @/home/${var.deploy_user}/.dokploy-traefik-main.json
 
-      rm -f /home/symbionic_dokploy_user/.dokploy-traefik-main.yml \
-            /home/symbionic_dokploy_user/.dokploy-traefik-main.json
+      rm -f /home/${var.deploy_user}/.dokploy-traefik-main.yml \
+            /home/${var.deploy_user}/.dokploy-traefik-main.json
       EOT
     ]
   }
@@ -151,7 +151,7 @@ resource "null_resource" "configure" {
   connection {
     type        = "ssh"
     host        = var.instance_ip
-    user        = "symbionic_dokploy_user"
+    user        = var.deploy_user
     private_key = file("${path.root}/id_ed25519")
   }
 
@@ -159,7 +159,7 @@ resource "null_resource" "configure" {
   # these with whatever Dokploy already has (preserving other keys) before
   # writing back via settings.writeTraefikEnv.
   provisioner "file" {
-    destination = "/home/symbionic_dokploy_user/.dokploy-traefik-dns01.env"
+    destination = "/home/${var.deploy_user}/.dokploy-traefik-dns01.env"
     content     = <<-EOT
       TRAEFIK_CERTIFICATESRESOLVERS_LETSENCRYPT_ACME_EMAIL=${var.email}
       TRAEFIK_CERTIFICATESRESOLVERS_LETSENCRYPT_ACME_STORAGE=/etc/dokploy/traefik/dynamic/acme.json
@@ -185,24 +185,24 @@ resource "null_resource" "configure" {
         -H "x-api-key: $API_KEY" | jq -r '.result.data.json')
 
       # Merge: keep CURRENT lines whose KEY is not in our new set, append all new lines.
-      REPLACE_KEYS=$(awk -F= '{print $1}' /home/symbionic_dokploy_user/.dokploy-traefik-dns01.env | sort -u)
+      REPLACE_KEYS=$(awk -F= '{print $1}' /home/${var.deploy_user}/.dokploy-traefik-dns01.env | sort -u)
       KEEP=$(printf '%s\n' "$CURRENT" | awk -F= -v keys="$REPLACE_KEYS" '
         BEGIN { n = split(keys, a, "\n"); for (i=1;i<=n;i++) drop[a[i]]=1 }
         { if (!($1 in drop) && length($0)) print }
       ')
-      MERGED=$(printf '%s\n%s' "$KEEP" "$(cat /home/symbionic_dokploy_user/.dokploy-traefik-dns01.env)")
+      MERGED=$(printf '%s\n%s' "$KEEP" "$(cat /home/${var.deploy_user}/.dokploy-traefik-dns01.env)")
 
       # Wrap merged env in the tRPC mutation payload shape: {"json":{"env":"..."}}
-      jq -n --arg env "$MERGED" '{json: {env: $env}}' > /home/symbionic_dokploy_user/.dokploy-traefik-dns01.json
+      jq -n --arg env "$MERGED" '{json: {env: $env}}' > /home/${var.deploy_user}/.dokploy-traefik-dns01.json
 
       curl -sf -X POST "http://localhost:3000/api/trpc/settings.writeTraefikEnv" \
         -H 'Content-Type: application/json' \
         -H "x-api-key: $API_KEY" \
-        --data @/home/symbionic_dokploy_user/.dokploy-traefik-dns01.json
+        --data @/home/${var.deploy_user}/.dokploy-traefik-dns01.json
 
       # Clean up: token never persists longer than one POST cycle on disk
-      shred -u /home/symbionic_dokploy_user/.dokploy-traefik-dns01.env /home/symbionic_dokploy_user/.dokploy-traefik-dns01.json 2>/dev/null \
-        || rm -f /home/symbionic_dokploy_user/.dokploy-traefik-dns01.env /home/symbionic_dokploy_user/.dokploy-traefik-dns01.json
+      shred -u /home/${var.deploy_user}/.dokploy-traefik-dns01.env /home/${var.deploy_user}/.dokploy-traefik-dns01.json 2>/dev/null \
+        || rm -f /home/${var.deploy_user}/.dokploy-traefik-dns01.env /home/${var.deploy_user}/.dokploy-traefik-dns01.json
       EOT
     ]
   }
@@ -216,9 +216,9 @@ locals {
           defaultGeneratedCert:
             resolver: letsencrypt
             domain:
-              main: symbionic.tech
+              main: ${var.hostname_tld}
               sans:
-                - "*.symbionic.tech"
+                - "*.${var.hostname_tld}"
   YAML
 }
 
@@ -237,12 +237,12 @@ resource "null_resource" "configure_dynamic" {
   connection {
     type        = "ssh"
     host        = var.instance_ip
-    user        = "symbionic_dokploy_user"
+    user        = var.deploy_user
     private_key = file("${path.root}/id_ed25519")
   }
 
   provisioner "file" {
-    destination = "/home/symbionic_dokploy_user/.dokploy-traefik-dynamic.yml"
+    destination = "/home/${var.deploy_user}/.dokploy-traefik-dynamic.yml"
     content     = local.wildcard_dynamic_yaml
   }
 
@@ -258,17 +258,17 @@ resource "null_resource" "configure_dynamic" {
       # MAIN_TRAEFIK_PATH and swallows errors in try/catch — so the path must be
       # absolute. /etc/dokploy/traefik/dynamic/ is bind-mounted into the dokploy
       # container and watched by Traefik's file provider.
-      jq -Rn --rawfile yaml /home/symbionic_dokploy_user/.dokploy-traefik-dynamic.yml \
+      jq -Rn --rawfile yaml /home/${var.deploy_user}/.dokploy-traefik-dynamic.yml \
         '{json: {path: "/etc/dokploy/traefik/dynamic/wildcard-tls.yml", traefikConfig: $yaml}}' \
-        > /home/symbionic_dokploy_user/.dokploy-traefik-dynamic.json
+        > /home/${var.deploy_user}/.dokploy-traefik-dynamic.json
 
       curl -sf -X POST "http://localhost:3000/api/trpc/settings.updateTraefikFile" \
         -H 'Content-Type: application/json' \
         -H "x-api-key: $API_KEY" \
-        --data @/home/symbionic_dokploy_user/.dokploy-traefik-dynamic.json
+        --data @/home/${var.deploy_user}/.dokploy-traefik-dynamic.json
 
-      rm -f /home/symbionic_dokploy_user/.dokploy-traefik-dynamic.yml \
-            /home/symbionic_dokploy_user/.dokploy-traefik-dynamic.json
+      rm -f /home/${var.deploy_user}/.dokploy-traefik-dynamic.yml \
+            /home/${var.deploy_user}/.dokploy-traefik-dynamic.json
       EOT
     ]
   }

@@ -22,12 +22,12 @@ resource "null_resource" "configure_dokploy_pg_backup" {
   connection {
     type        = "ssh"
     host        = var.instance_ip
-    user        = "symbionic_dokploy_user"
+    user        = var.deploy_user
     private_key = file("${path.root}/id_ed25519")
   }
 
   provisioner "file" {
-    destination = "/home/symbionic_dokploy_user/.dokploy-pg-backup.env"
+    destination = "/home/${var.deploy_user}/.dokploy-pg-backup.env"
     content     = "BACKUP_BUCKET=${var.bucket_name}\nGPG_RECIPIENT=${var.gpg_recipient}\n"
   }
 
@@ -37,7 +37,7 @@ resource "null_resource" "configure_dokploy_pg_backup" {
   # installed. PIPESTATUS check ensures a mid-pipe failure (e.g. pg_dump
   # OOMing) exits non-zero rather than uploading a truncated dump.
   provisioner "file" {
-    destination = "/home/symbionic_dokploy_user/dokploy-pg-backup.sh"
+    destination = "/home/${var.deploy_user}/dokploy-pg-backup.sh"
     content     = <<-EOT
       #!/usr/bin/env bash
       set -euo pipefail
@@ -86,7 +86,7 @@ resource "null_resource" "configure_dokploy_pg_backup" {
   }
 
   provisioner "file" {
-    destination = "/home/symbionic_dokploy_user/dokploy-pg-backup.service"
+    destination = "/home/${var.deploy_user}/dokploy-pg-backup.service"
     content     = <<-EOT
       [Unit]
       Description=Encrypted pg_dump of dokploy-postgres to object storage
@@ -101,7 +101,7 @@ resource "null_resource" "configure_dokploy_pg_backup" {
   }
 
   provisioner "file" {
-    destination = "/home/symbionic_dokploy_user/dokploy-pg-backup.timer"
+    destination = "/home/${var.deploy_user}/dokploy-pg-backup.timer"
     content     = <<-EOT
       [Unit]
       Description=Daily encrypted backup of dokploy-postgres
@@ -120,11 +120,11 @@ resource "null_resource" "configure_dokploy_pg_backup" {
 
   provisioner "remote-exec" {
     inline = [
-      "sudo install -m 0600 -o root -g root /home/symbionic_dokploy_user/.dokploy-pg-backup.env /root/.dokploy-pg-backup.env",
-      "sudo install -m 0755 -o root -g root /home/symbionic_dokploy_user/dokploy-pg-backup.sh /usr/local/sbin/dokploy-pg-backup.sh",
-      "sudo install -m 0644 -o root -g root /home/symbionic_dokploy_user/dokploy-pg-backup.service /etc/systemd/system/dokploy-pg-backup.service",
-      "sudo install -m 0644 -o root -g root /home/symbionic_dokploy_user/dokploy-pg-backup.timer /etc/systemd/system/dokploy-pg-backup.timer",
-      "rm -f /home/symbionic_dokploy_user/.dokploy-pg-backup.env /home/symbionic_dokploy_user/dokploy-pg-backup.sh /home/symbionic_dokploy_user/dokploy-pg-backup.service /home/symbionic_dokploy_user/dokploy-pg-backup.timer",
+      "sudo install -m 0600 -o root -g root /home/${var.deploy_user}/.dokploy-pg-backup.env /root/.dokploy-pg-backup.env",
+      "sudo install -m 0755 -o root -g root /home/${var.deploy_user}/dokploy-pg-backup.sh /usr/local/sbin/dokploy-pg-backup.sh",
+      "sudo install -m 0644 -o root -g root /home/${var.deploy_user}/dokploy-pg-backup.service /etc/systemd/system/dokploy-pg-backup.service",
+      "sudo install -m 0644 -o root -g root /home/${var.deploy_user}/dokploy-pg-backup.timer /etc/systemd/system/dokploy-pg-backup.timer",
+      "rm -f /home/${var.deploy_user}/.dokploy-pg-backup.env /home/${var.deploy_user}/dokploy-pg-backup.sh /home/${var.deploy_user}/dokploy-pg-backup.service /home/${var.deploy_user}/dokploy-pg-backup.timer",
       "sudo systemctl daemon-reload",
       "sudo systemctl enable --now dokploy-pg-backup.timer",
     ]

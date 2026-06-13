@@ -21,3 +21,9 @@ variable "gpg_recipient" {
   nullable    = false
   description = "GPG recipient (key id, fingerprint, or email) used to encrypt backups. Public key must already be on the host (pushed by acme-backup)."
 }
+
+variable "deploy_user" {
+  type        = string
+  nullable    = false
+  description = "Non-root sudoer used for SSH-tunneled Dokploy admin calls. Home directory is /home/<deploy_user>."
+}

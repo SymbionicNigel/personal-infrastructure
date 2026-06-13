@@ -39,3 +39,9 @@ variable "endpoint" {
   nullable    = false
   description = "S3 endpoint hostname for the backups bucket (e.g. us-ord-1.linodeobjects.com). Pass linode_object_storage_bucket.<bucket>.s3_endpoint so cluster naming stays in the provider's hands."
 }
+
+variable "deploy_user" {
+  type        = string
+  nullable    = false
+  description = "Non-root sudoer used for SSH-tunneled Dokploy admin calls. Home directory is /home/<deploy_user>."
+}

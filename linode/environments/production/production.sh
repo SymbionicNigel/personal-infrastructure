@@ -41,8 +41,17 @@ export TF_VAR_GHCR_USER="$OWNER"
 
 terraform init -backend-config=backend.hcl
 
-# TF_PLAN_ONLY=true (set by the reusable workflow on PR validation) runs a
-# read-only plan and skips both the apply and the local bootstrap below.
+# TF_DETECT_CHANGES=true (CI plan job) runs plan with -detailed-exitcode and
+# propagates terraform's rc (0 none, 2 changes, 1 error) for the apply gate.
+if [ "${TF_DETECT_CHANGES:-false}" = "true" ]; then
+    set +e
+    terraform plan -input=false -detailed-exitcode
+    rc=$?
+    set -e
+    exit "$rc"
+fi
+
+# TF_PLAN_ONLY=true is a read-only plan for local use; skips apply + bootstrap.
 if [ "${TF_PLAN_ONLY:-false}" = "true" ]; then
     terraform plan -input=false
     exit 0
@@ -85,6 +94,7 @@ API_KEY=$(cat "$API_KEY_FILE")
 # Hand off to the dokploy stage by generating its .env
 cat > "../dokploy/.env" << EOF
 TF_VAR_DOKPLOY_API_KEY=$API_KEY
+TF_VAR_DOKPLOY_PROJECT_NAME=${TF_VAR_DOKPLOY_PROJECT_NAME:-services}
 AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID
 AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY
 EOF

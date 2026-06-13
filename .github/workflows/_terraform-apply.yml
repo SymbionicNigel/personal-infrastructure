@@ -1,105 +1,48 @@
-# Reusable Terraform apply for the linode/ environments. Callers pass the env's
-# working directory + wrapper script; this handles the shared setup (submodule
-# checkout, GPG import, chezmoi-materialized secrets, terraform) and runs it.
+# Reusable Terraform plan-then-apply. The plan job runs the wrapper in detect
+# mode and outputs has_changes; the apply job — which carries `environment:` —
+# only runs when has_changes is true, so a no-op apply records no Deployment.
+# Shared setup lives in .github/actions/tf-setup.
 #
-# Required repo secrets (via `secrets: inherit` on workflow_call, or directly on
-# workflow_dispatch):
-#   GPG_PRIVATE_KEY  - decrypt chezmoi-managed secrets (key has no passphrase)
-#   BW_CLIENTID, BW_CLIENTSECRET, BW_PASSWORD - non-interactive Bitwarden unlock
-#   CI_PAT  - read the private .secrets submodule (also writes repo Variables elsewhere)
+# Required repo secrets (via `secrets: inherit`):
+#   GPG_PRIVATE_KEY
+#   BW_CLIENTID, BW_CLIENTSECRET, BW_PASSWORD
+#   CI_PAT  (reads the private .secrets submodule)
 
-# Serialize every linode TF op (plan + apply) so concurrent runs (service
-# deploys, infra, PR plans) queue rather than race the shared host / S3 state
-# locks. plan_only=true runs `terraform plan` (read-only) instead of apply.
+# Serialize every linode TF op against the shared host / S3 state locks.
 concurrency:
   cancel-in-progress: false
   group: linode-tf-apply
 
 jobs:
   apply:
-    # Surface real applies in the GitHub Environments/Deployments tab; read-only
-    # PR plans resolve to an empty name, so no deployment is recorded.
-    environment: ${{ !inputs.plan_only && inputs.label || '' }}
+    # `environment:` creates the Deployment when the job starts; the `if` keeps
+    # this job from running (and from recording one) on a no-op plan.
+    environment: ${{ inputs.label }}
+    if: ${{ !inputs.plan_only && needs.plan.outputs.has_changes == 'true' }}
+    needs: plan
     runs-on: ubuntu-latest
     steps:
-      # Empty ref = the triggering ref. A caller may pin a specific SHA so the
-      # checked-out compose/terraform matches the image being deployed.
       - uses: actions/checkout@v6
         with:
           ref: ${{ inputs.ref }}
 
-      # Submodules include .secrets/ (encrypted via chezmoi/GPG, PRIVATE repo)
-      # and dotfile-utils/ (install + bitwarden scripts). .gitmodules uses SSH
-      # URLs the default GITHUB_TOKEN can't fetch, and the token can't read the
-      # private .secrets repo — so rewrite SSH->HTTPS with a PAT that can read
-      # both, then init recursively.
-      - env:
-          CI_PAT: ${{ secrets.CI_PAT }}
-        name: Checkout submodules
-        run: |
-          git config --global url."https://x-access-token:${CI_PAT}@github.com/".insteadOf "git@github.com:"
-          git submodule sync --recursive
-          git submodule update --init --recursive
-
-      # Key is unprotected (no passphrase), so no passphrase input is needed.
-      - name: Import GPG key
-        uses: crazy-max/ghaction-import-gpg@v7
+      - name: Setup (submodules, GPG, chezmoi, Terraform)
+        uses: ./.github/actions/tf-setup
         with:
+          bw_clientid: ${{ secrets.BW_CLIENTID }}
+          bw_clientsecret: ${{ secrets.BW_CLIENTSECRET }}
+          bw_password: ${{ secrets.BW_PASSWORD }}
+          ci_pat: ${{ secrets.CI_PAT }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
           gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
 
-      # gh is preinstalled on ubuntu-latest; GH_TOKEN authenticates it so the
-      # installer's `gh release` lookups work.
-      - env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        name: Install Bitwarden CLI
-        run: bash dotfile-utils/scripts/install_bw_cli.sh
-
-      # CI mode: skip fork/release management, read the pinned version from the
-      # owner's public fork. Add ~/.local/bin to PATH for later steps.
-      - env:
-          CHEZMOI_FORK_USER: ${{ github.repository_owner }}
-          CI: "true"
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        name: Install chezmoi
-        run: |
-          bash dotfile-utils/scripts/install_chezmoi.sh
-          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
-
-      # Bitwarden unlock + chezmoi apply in one shell so BW_SESSION (exported by
-      # the sourced script) is consumed in-process. --no-tty makes any prompt
-      # fail fast instead of hanging. Materializes the env's .env, backend.hcl,
-      # id_ed25519, etc.
-      #
-      # GH_TOKEN must be a *user* PAT (CI_PAT): the compose-env chezmoi template
-      # renders GHCR_OWNER via `gh api user`, whose REST /user endpoint 403s for
-      # GITHUB_TOKEN (an installation token). Without a usable token that
-      # `output` call exits non-zero and chezmoi aborts the entire apply.
-      - env:
-          BW_CLIENTID: ${{ secrets.BW_CLIENTID }}
-          BW_CLIENTSECRET: ${{ secrets.BW_CLIENTSECRET }}
-          BW_PASSWORD: ${{ secrets.BW_PASSWORD }}
-          GH_TOKEN: ${{ secrets.CI_PAT }}
-        name: chezmoi apply (Bitwarden-unlocked)
-        run: |
-          source dotfile-utils/scripts/source_bitwarden_session.sh
-          chezmoi apply --no-tty --config ./.chezmoi.toml
-
-      - uses: hashicorp/setup-terraform@v4
-        with:
-          terraform_wrapper: false
-
-      # Run the env's wrapper script (sources its own .env + runs terraform).
-      # For service deploys, the orchestrator passes every <SVC>_IMAGE_TAG as a
-      # TF_VAR_* assignment via tf_vars; export each before the script.
-      # CI=true (set by Actions) tells scripts to skip local-only bootstrap.
       - env:
           BW_CLIENTID: ${{ secrets.BW_CLIENTID }}
           BW_CLIENTSECRET: ${{ secrets.BW_CLIENTSECRET }}
           BW_PASSWORD: ${{ secrets.BW_PASSWORD }}
           SCRIPT: ${{ inputs.script }}
-          TF_PLAN_ONLY: ${{ inputs.plan_only }}
           TF_VARS: ${{ inputs.tf_vars }}
-        name: terraform ${{ inputs.plan_only && 'plan' || 'apply' }} (${{ inputs.script }})
+        name: terraform apply (${{ inputs.script }})
         run: |
           if [ -n "$TF_VARS" ]; then
             while IFS= read -r line; do
@@ -108,6 +51,70 @@ jobs:
             done <<< "$TF_VARS"
           fi
           bash "$SCRIPT"
+        working-directory: ${{ inputs.working_directory }}
+
+  plan:
+    outputs:
+      has_changes: ${{ steps.plan.outputs.has_changes }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.ref }}
+
+      - name: Setup (submodules, GPG, chezmoi, Terraform)
+        uses: ./.github/actions/tf-setup
+        with:
+          bw_clientid: ${{ secrets.BW_CLIENTID }}
+          bw_clientsecret: ${{ secrets.BW_CLIENTSECRET }}
+          bw_password: ${{ secrets.BW_PASSWORD }}
+          ci_pat: ${{ secrets.CI_PAT }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
+
+      # Wrapper exits with terraform's -detailed-exitcode rc (0 none, 2 changes,
+      # 1 error). Plan output is teed into the run summary.
+      - env:
+          BW_CLIENTID: ${{ secrets.BW_CLIENTID }}
+          BW_CLIENTSECRET: ${{ secrets.BW_CLIENTSECRET }}
+          BW_PASSWORD: ${{ secrets.BW_PASSWORD }}
+          LABEL: ${{ inputs.label }}
+          SCRIPT: ${{ inputs.script }}
+          TF_DETECT_CHANGES: "true"
+          TF_VARS: ${{ inputs.tf_vars }}
+        id: plan
+        name: terraform plan (${{ inputs.script }})
+        run: |
+          if [ -n "$TF_VARS" ]; then
+            while IFS= read -r line; do
+              [ -n "$line" ] || continue
+              export "${line%%=*}=${line#*=}"
+            done <<< "$TF_VARS"
+          fi
+          set +e
+          bash "$SCRIPT" 2>&1 | tee plan.out
+          rc=${PIPESTATUS[0]}
+          set -e
+          {
+            echo "### Terraform plan — ${LABEL}"
+            if [ "$rc" = "2" ]; then
+              echo "**Changes detected.**"
+            elif [ "$rc" = "0" ]; then
+              echo "_No changes._"
+            fi
+            echo
+            echo '```'
+            tail -c 60000 plan.out
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          if [ "$rc" = "2" ]; then
+            echo "has_changes=true" >> "$GITHUB_OUTPUT"
+          elif [ "$rc" = "0" ]; then
+            echo "has_changes=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "::error::terraform plan failed (exit $rc)"
+            exit "$rc"
+          fi
         working-directory: ${{ inputs.working_directory }}
 
 name: _terraform-apply
@@ -121,7 +128,7 @@ on:
         type: string
       plan_only:
         default: false
-        description: Run `terraform plan` (read-only) instead of apply.
+        description: Skip the apply job; run only the read-only plan.
         required: false
         type: boolean
       ref:
@@ -150,7 +157,7 @@ on:
         type: string
       plan_only:
         default: false
-        description: Run `terraform plan` (read-only) instead of apply.
+        description: Skip the apply job; run only the read-only plan.
         required: false
         type: boolean
       ref:

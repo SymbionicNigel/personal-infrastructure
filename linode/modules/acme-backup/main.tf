@@ -46,12 +46,12 @@ resource "null_resource" "configure_acme_backup" {
   connection {
     type        = "ssh"
     host        = var.instance_ip
-    user        = "symbionic_dokploy_user"
+    user        = var.deploy_user
     private_key = file("${path.root}/id_ed25519")
   }
 
   provisioner "file" {
-    destination = "/home/symbionic_dokploy_user/.s3cfg"
+    destination = "/home/${var.deploy_user}/.s3cfg"
     content     = <<-EOT
       [default]
       access_key = ${linode_object_storage_key.infra_backups.access_key}
@@ -64,15 +64,15 @@ resource "null_resource" "configure_acme_backup" {
   }
 
   provisioner "file" {
-    destination = "/home/symbionic_dokploy_user/.acme-backup.env"
+    destination = "/home/${var.deploy_user}/.acme-backup.env"
     content     = "BACKUP_BUCKET=${var.bucket_name}\nGPG_RECIPIENT=${var.gpg_recipient}\n"
   }
 
   provisioner "remote-exec" {
     inline = [
-      "sudo install -m 0600 -o root -g root /home/symbionic_dokploy_user/.s3cfg /root/.s3cfg",
-      "sudo install -m 0600 -o root -g root /home/symbionic_dokploy_user/.acme-backup.env /root/.acme-backup.env",
-      "rm -f /home/symbionic_dokploy_user/.s3cfg /home/symbionic_dokploy_user/.acme-backup.env",
+      "sudo install -m 0600 -o root -g root /home/${var.deploy_user}/.s3cfg /root/.s3cfg",
+      "sudo install -m 0600 -o root -g root /home/${var.deploy_user}/.acme-backup.env /root/.acme-backup.env",
+      "rm -f /home/${var.deploy_user}/.s3cfg /home/${var.deploy_user}/.acme-backup.env",
     ]
   }
 
@@ -94,7 +94,7 @@ resource "null_resource" "configure_acme_backup" {
         | ssh -o StrictHostKeyChecking=accept-new \
               -o UserKnownHostsFile=/dev/null \
               -i ${path.root}/id_ed25519 \
-              symbionic_dokploy_user@${var.instance_ip} \
+              ${var.deploy_user}@${var.instance_ip} \
               'sudo gpg --batch --import'
     EOT
   }
@@ -143,7 +143,7 @@ resource "null_resource" "restore_acme" {
         | ssh -o StrictHostKeyChecking=accept-new \
               -o UserKnownHostsFile=/dev/null \
               -i ${path.root}/id_ed25519 \
-              symbionic_dokploy_user@${var.instance_ip} \
+              ${var.deploy_user}@${var.instance_ip} \
               "sudo install -m 0600 -o root -g root /dev/stdin /etc/dokploy/traefik/dynamic/acme.json && sudo docker restart dokploy-traefik >/dev/null"
 
       echo "[restore_acme] done"

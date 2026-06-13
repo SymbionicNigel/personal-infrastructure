@@ -81,13 +81,13 @@ timedatectl set-timezone America/New_York
 hostnamectl set-hostname "dokploy-main.${HOSTNAME_TLD}"
 
 # Create non-root user and add public key
-adduser --disabled-password --gecos "" symbionic_dokploy_user
-usermod -aG sudo symbionic_dokploy_user
-mkdir -p /home/symbionic_dokploy_user/.ssh
-cp /root/.ssh/authorized_keys /home/symbionic_dokploy_user/.ssh/authorized_keys
-chown -R symbionic_dokploy_user:symbionic_dokploy_user /home/symbionic_dokploy_user/.ssh
-chmod 700 /home/symbionic_dokploy_user/.ssh
-chmod 600 /home/symbionic_dokploy_user/.ssh/authorized_keys
+adduser --disabled-password --gecos "" ${DEPLOY_USER}
+usermod -aG sudo ${DEPLOY_USER}
+mkdir -p /home/${DEPLOY_USER}/.ssh
+cp /root/.ssh/authorized_keys /home/${DEPLOY_USER}/.ssh/authorized_keys
+chown -R ${DEPLOY_USER}:${DEPLOY_USER} /home/${DEPLOY_USER}/.ssh
+chmod 700 /home/${DEPLOY_USER}/.ssh
+chmod 600 /home/${DEPLOY_USER}/.ssh/authorized_keys
 
 # Install docker and docker compose
 curl -fsSL https://get.docker.com -o get-docker.sh
@@ -95,15 +95,15 @@ sh get-docker.sh
 rm get-docker.sh
 
 systemctl enable docker
-usermod -aG docker symbionic_dokploy_user
+usermod -aG docker ${DEPLOY_USER}
 
 # Passwordless sudo so terraform provisioners can run privileged commands
 # without an interactive prompt. Scope narrow: only this one user.
-cat > /etc/sudoers.d/symbionic_dokploy_user <<'SUDO_EOF'
-symbionic_dokploy_user ALL=(ALL) NOPASSWD:ALL
+cat > /etc/sudoers.d/${DEPLOY_USER} <<'SUDO_EOF'
+${DEPLOY_USER} ALL=(ALL) NOPASSWD:ALL
 SUDO_EOF
-chmod 440 /etc/sudoers.d/symbionic_dokploy_user
-visudo -c -f /etc/sudoers.d/symbionic_dokploy_user
+chmod 440 /etc/sudoers.d/${DEPLOY_USER}
+visudo -c -f /etc/sudoers.d/${DEPLOY_USER}
 
 # Install dokploy at the pinned version. The install script reads
 # DOKPLOY_VERSION from the environment; without it, it auto-detects the

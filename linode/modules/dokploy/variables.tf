@@ -35,3 +35,10 @@ variable "DOKPLOY_VERSION" {
   nullable    = false
   description = "Pinned Dokploy release tag (e.g. v0.27.0). Honored by https://dokploy.com/install.sh via the DOKPLOY_VERSION env var. Pinning here avoids surprise upgrades on rebuild."
 }
+
+variable "deploy_user" {
+  type        = string
+  nullable    = false
+  description = "Non-root sudoer created by cloud-init and used for SSH-tunneled Dokploy admin calls. Home directory is /home/<deploy_user>."
+  default     = "deploy"
+}

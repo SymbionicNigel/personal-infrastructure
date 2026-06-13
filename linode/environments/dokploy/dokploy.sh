@@ -18,8 +18,17 @@ export TF_VAR_GHCR_OWNER="${OWNER,,}"
 
 terraform init -backend-config=backend.hcl
 
-# TF_PLAN_ONLY=true (set by the reusable workflow on PR validation) runs a
-# read-only plan instead of mutating anything.
+# TF_DETECT_CHANGES=true (CI plan job) runs plan with -detailed-exitcode and
+# propagates terraform's rc (0 none, 2 changes, 1 error) for the apply gate.
+if [ "${TF_DETECT_CHANGES:-false}" = "true" ]; then
+  set +e
+  terraform plan -input=false -detailed-exitcode
+  rc=$?
+  set -e
+  exit "$rc"
+fi
+
+# TF_PLAN_ONLY=true is a read-only plan for local use; skips apply.
 if [ "${TF_PLAN_ONLY:-false}" = "true" ]; then
   terraform plan -input=false
   exit 0
