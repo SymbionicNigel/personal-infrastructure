@@ -6,7 +6,7 @@ Daily encrypted `pg_dump`s land in `s3://<infra-backups-bucket>/dokploy-postgres
 
 - Your laptop has the GPG private key matching `var.GPG_RECIPIENT`.
 - `s3cmd` configured for the backups bucket (acme-backup already wrote `/root/.s3cfg` on the host; you can use a local config or `scp` that file down for one-shot use).
-- SSH to the target instance as `symbionic_dokploy_user`.
+- SSH to the target instance as the deploy user (`var.deploy_user`; `ssh dokploy-prod` already uses it).
 
 ## Steps
 

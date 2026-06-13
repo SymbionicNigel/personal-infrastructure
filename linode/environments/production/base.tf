@@ -53,6 +53,7 @@ module "dokploy-instance" {
   DOKPLOY_ADMIN_EMAIL    = var.DOKPLOY_ADMIN_EMAIL
   DOKPLOY_ADMIN_PASSWORD = var.DOKPLOY_ADMIN_PASSWORD
   DOKPLOY_VERSION        = var.DOKPLOY_VERSION
+  deploy_user            = var.DEPLOY_USER
 }
 
 module "network" {
@@ -78,6 +79,8 @@ module "dokploy_dns01" {
   resource_prefix = local.resource_prefix
   instance_ip     = module.dokploy-instance.instance_ip
   email           = var.EMAIL_ADDRESS
+  hostname_tld    = var.HOSTNAME_TLD
+  deploy_user     = module.dokploy-instance.deploy_user
 }
 
 # Bind the Dokploy dashboard to <DASHBOARD_SUBDOMAIN>.<HOSTNAME_TLD> over HTTPS.
@@ -98,12 +101,12 @@ resource "null_resource" "bind_dokploy_domain" {
   connection {
     type        = "ssh"
     host        = module.dokploy-instance.instance_ip
-    user        = "symbionic_dokploy_user"
+    user        = module.dokploy-instance.deploy_user
     private_key = file("${path.root}/id_ed25519")
   }
 
   provisioner "file" {
-    destination = "/home/symbionic_dokploy_user/.dokploy-bind-domain.json"
+    destination = "/home/${module.dokploy-instance.deploy_user}/.dokploy-bind-domain.json"
     content = jsonencode({
       json = {
         host             = "${var.DASHBOARD_SUBDOMAIN}.${var.HOSTNAME_TLD}"
@@ -123,8 +126,8 @@ resource "null_resource" "bind_dokploy_domain" {
       curl -sf -X POST http://localhost:3000/api/trpc/settings.assignDomainServer \
         -H 'Content-Type: application/json' \
         -H "x-api-key: $API_KEY" \
-        --data @/home/symbionic_dokploy_user/.dokploy-bind-domain.json
-      rm -f /home/symbionic_dokploy_user/.dokploy-bind-domain.json
+        --data @/home/${module.dokploy-instance.deploy_user}/.dokploy-bind-domain.json
+      rm -f /home/${module.dokploy-instance.deploy_user}/.dokploy-bind-domain.json
       EOT
     ]
   }
@@ -147,14 +150,14 @@ resource "null_resource" "ghcr_login" {
   connection {
     type        = "ssh"
     host        = module.dokploy-instance.instance_ip
-    user        = "symbionic_dokploy_user"
+    user        = module.dokploy-instance.deploy_user
     private_key = file("${path.root}/id_ed25519")
   }
 
   # Brief plaintext on disk (rm'd in the same step), mirroring how
   # bind_dokploy_domain ships its payload.
   provisioner "file" {
-    destination = "/home/symbionic_dokploy_user/.ghcr-pat"
+    destination = "/home/${module.dokploy-instance.deploy_user}/.ghcr-pat"
     content     = var.GHCR_PAT
   }
 
@@ -162,8 +165,8 @@ resource "null_resource" "ghcr_login" {
     inline = [
       <<-EOT
       set -eu
-      sudo docker login ghcr.io -u '${var.GHCR_USER}' --password-stdin < /home/symbionic_dokploy_user/.ghcr-pat
-      rm -f /home/symbionic_dokploy_user/.ghcr-pat
+      sudo docker login ghcr.io -u '${var.GHCR_USER}' --password-stdin < /home/${module.dokploy-instance.deploy_user}/.ghcr-pat
+      rm -f /home/${module.dokploy-instance.deploy_user}/.ghcr-pat
       EOT
     ]
   }
@@ -220,7 +223,7 @@ resource "local_file" "ssh_config" {
   content         = <<-EOT
     Host dokploy-prod
         HostName ${module.dokploy-instance.instance_ip}
-        User symbionic_dokploy_user
+        User ${module.dokploy-instance.deploy_user}
         IdentityFile ${abspath(path.root)}/id_ed25519
         IdentitiesOnly yes
         StrictHostKeyChecking accept-new
@@ -238,6 +241,7 @@ module "acme_backup" {
   gpg_recipient        = var.GPG_RECIPIENT
   instance_ip          = module.dokploy-instance.instance_ip
   key_rotation_trigger = time_rotating.infra_backups_key.rotation_rfc3339
+  deploy_user          = module.dokploy-instance.deploy_user
 }
 
 # Encrypted daily snapshot of Dokploy's internal postgres. Reuses /root/.s3cfg
@@ -251,6 +255,7 @@ module "dokploy_postgres_backup" {
   bucket_name   = linode_object_storage_bucket.infra_backups.label
   endpoint      = linode_object_storage_bucket.infra_backups.s3_endpoint
   gpg_recipient = var.GPG_RECIPIENT
+  deploy_user   = module.dokploy-instance.deploy_user
 
   depends_on = [module.acme_backup]
 }

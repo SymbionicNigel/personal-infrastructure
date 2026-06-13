@@ -24,3 +24,10 @@ variable "GHCR_OWNER" {
   nullable    = false
   description = "GHCR namespace (lowercased repo owner) for service image paths. Supplied by dokploy.sh from the repo owner."
 }
+
+variable "DOKPLOY_PROJECT_NAME" {
+  type        = string
+  nullable    = false
+  description = "Name of the Dokploy project that holds the managed services stack."
+  default     = "services"
+}

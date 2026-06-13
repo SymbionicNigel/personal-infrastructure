@@ -71,3 +71,10 @@ variable "GHCR_PAT" {
   nullable    = false
   description = "Fine-grained PAT (Packages: Read-only) the host uses to authenticate to GHCR for image pulls."
 }
+
+variable "DEPLOY_USER" {
+  type        = string
+  nullable    = false
+  default     = "deploy"
+  description = "Non-root sudoer created by cloud-init and used for SSH-tunneled Dokploy admin calls. Threaded into every module that SSHes back into the host."
+}

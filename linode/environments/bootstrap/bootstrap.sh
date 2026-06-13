@@ -82,6 +82,9 @@ prompt_if_missing "TF_VAR_HOSTNAME_TLD"           "Hostname/TLD (e.g. example.co
 prompt_if_missing "TF_VAR_EMAIL_ADDRESS"          "Email for Let's Encrypt / domain owner"
 prompt_if_missing "TF_VAR_REGION"                 "Linode region (e.g. us-ord)"
 prompt_if_missing "TF_VAR_GPG_RECIPIENT"          "GPG recipient (id/fingerprint/email) for acme.json backup encryption"
+prompt_if_missing "TF_VAR_DEPLOY_USER"            "Deploy sudoer username created on the Dokploy host (e.g. deploy)"
+# Consumed by the dokploy environment; production.sh forwards it into dokploy/.env.
+prompt_if_missing "TF_VAR_DOKPLOY_PROJECT_NAME"   "Dokploy project name for the services stack (e.g. services)"
 
 terraform init
 terraform apply
