@@ -45,7 +45,7 @@ resource "dokploy_api_key" "main" {
 }
 
 resource "dokploy_project" "main" {
-  name       = "symbionic-services"
+  name       = "services"
   depends_on = [dokploy_api_key.main]
 }
 ```

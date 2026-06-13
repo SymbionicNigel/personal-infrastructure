@@ -1,6 +1,7 @@
 {
     "yaml.schemas": {
         "./.vscode/empty.schema.json": [
+            "**/.github/actions/**/action.yml",
             "**/.github/workflows/*.yml",
             "**/.github/workflows/*.yaml",
             "**/pnpm-workspace.yaml"
