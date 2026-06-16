@@ -36,7 +36,7 @@ RUN uv build --wheel --out-dir /wheels \
  && uv export --frozen --no-dev --no-emit-project --output-file /wheels/requirements.txt
 
 # Runtime stage: slim python image with the wheel installed. No uv.
-FROM python:3.13-slim AS runtime
+FROM python:3.14-slim AS runtime
 WORKDIR /app
 COPY --from=builder /wheels/ /tmp/wheels/
 # Locked+hashed deps first, then the app wheel --no-deps so pip never
