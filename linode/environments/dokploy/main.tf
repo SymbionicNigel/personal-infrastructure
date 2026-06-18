@@ -116,7 +116,7 @@ resource "dokploy_backup_destination" "linode" {
 }
 
 # Native control-plane backup: dumps the dokploy-postgres DB + /etc/dokploy to
-# the shared destination nightly. Replaces the dokploy-postgres-backup module.
+# the shared destination nightly.
 module "control_plane_backup" {
   source = "../../modules/dokploy-scheduled-backup"
 
