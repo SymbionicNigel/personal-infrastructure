@@ -19,33 +19,33 @@
   },
   "dependencies": {
     "@ark-ui/react": "^5.37.2",
-    "@react-router/node": "7.16.0",
-    "@react-router/serve": "7.16.0",
+    "@react-router/node": "7.17.0",
+    "@react-router/serve": "7.17.0",
     "i18next": "^26.3.1",
     "i18next-browser-languagedetector": "^8.2.1",
-    "isbot": "^5.1.36",
-    "lucide-react": "^1.17.0",
+    "isbot": "^5.1.43",
+    "lucide-react": "^1.18.0",
     "react": "^19.2.6",
     "react-dom": "^19.2.6",
     "react-i18next": "^17.0.8",
-    "react-router": "7.16.0",
+    "react-router": "7.17.0",
     "remix-i18next": "^7.5.0"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.4.16",
+    "@biomejs/biome": "^2.5.0",
     "@pandacss/dev": "^1.11.3",
     "@park-ui/panda-preset": "^0.43.1",
-    "@react-router/dev": "7.16.0",
+    "@react-router/dev": "7.17.0",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
     "@testing-library/user-event": "^14.6.1",
-    "@types/node": "^24",
+    "@types/node": "^25",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.2",
     "jsdom": "^29.1.1",
-    "typescript": "^5.9.3",
+    "typescript": "^6.0.3",
     "vite": "^8.0.3",
-    "vitest": "^4.1.8"
+    "vitest": "^4.1.9"
   }
 }

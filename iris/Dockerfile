@@ -11,9 +11,9 @@
 # are non-interactive; `prepare` (panda codegen) runs during install.
 
 # --- dev: HMR server, source bind-mounted by the compose override ---
-FROM node:24-slim AS dev
+FROM node:26-slim AS dev
 WORKDIR /app
-RUN corepack enable
+RUN npm install -g corepack@latest && corepack enable
 COPY . .
 RUN pnpm install --frozen-lockfile
 EXPOSE 3000
@@ -21,18 +21,18 @@ EXPOSE 3000
 CMD ["pnpm", "dev", "--host"]
 
 # --- build: produce the production server + client bundles ---
-FROM node:24-slim AS build
+FROM node:26-slim AS build
 WORKDIR /app
-RUN corepack enable
+RUN npm install -g corepack@latest && corepack enable
 COPY . .
 RUN pnpm install --frozen-lockfile
 RUN pnpm build
 
 # --- runtime: slim prod image, prod deps only, no source/build tooling ---
-FROM node:24-slim AS runtime
+FROM node:26-slim AS runtime
 WORKDIR /app
 ENV NODE_ENV=production
-RUN corepack enable
+RUN npm install -g corepack@latest && corepack enable
 # Prod deps only; --ignore-scripts skips `prepare` (codegen, already baked into
 # the build) and the esbuild build (dev-only tooling, absent from prod deps).
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
