@@ -76,6 +76,10 @@ resource "dokploy_compose" "stack" {
   source_type          = "raw"
   compose_file_content = local.compose_content
   deploy_on_create     = false
+  # Provider 0.4.0 forces a null value to false mid-apply (resource_compose.go
+  # Create/Update), tripping "inconsistent result after apply". Set it
+  # explicitly so plan and apply agree.
+  delete_volumes_on_destroy = false
 }
 
 # The provider's Update saves the compose but never redeploys, so a bumped image
@@ -184,7 +188,7 @@ resource "terraform_data" "ghcr_registry" {
     command     = <<-EOT
       set -euo pipefail
       base="https://vulcan.${local.hostname_tld}/api"
-      common=$(python3 -c 'import json,os;print(json.dumps({"registryName":"${local.ghcr_registry_name}","username":os.environ["GHCR_USER"],"password":os.environ["GHCR_PAT"],"registryUrl":"ghcr.io","registryType":"cloud"}))')
+      common=$(python3 -c 'import json,os;print(json.dumps({"registryName":"${local.ghcr_registry_name}","username":os.environ["GHCR_USER"],"password":os.environ["GHCR_PAT"],"registryUrl":"ghcr.io","registryType":"cloud","imagePrefix":None}))')
       rid='${local.ghcr_registry_id == null ? "" : local.ghcr_registry_id}'
       if [ -n "$rid" ]; then
         body=$(python3 -c 'import json,sys; d=json.loads(sys.argv[1]); d["registryId"]=sys.argv[2]; print(json.dumps(d))' "$common" "$rid")
