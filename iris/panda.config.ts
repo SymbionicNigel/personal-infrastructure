@@ -12,6 +12,11 @@ export default defineConfig({
   exclude: [],
   jsxFramework: 'react',
   outdir: 'styled-system',
+  // Tell Panda (and through it, PostCSS / Vite) to treat this config file as a
+  // watched dependency so token edits trigger HMR without a dev-server bounce.
+  // Documented remedy from the Panda FAQ for the "HMR not firing after a
+  // panda.config.ts change" symptom.
+  dependencies: ['./panda.config.ts'],
   theme: {
     extend: {
       tokens: {
@@ -26,8 +31,8 @@ export default defineConfig({
             warning: { value: '#edbf02' },
             error: { value: '#e06c21' },
             info: { value: '#0288d1' },
-            success: { value: '#005427' },
-            divider: { value: '#2f201b' },
+            success: { value: '#2d7d44' },
+            divider: { value: '#927f64' },
           },
         },
         fonts: {

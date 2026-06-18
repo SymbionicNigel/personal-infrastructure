@@ -1,5 +1,46 @@
 @layer reset, base, tokens, recipes, utilities;
 
+/* Registered so the masthead's scroll-driven animation can interpolate it as a
+   number; without @property the browser would treat it as a string and snap. */
+@property --mh-progress {
+  syntax: "<number>";
+  inherits: true;
+  initial-value: 0;
+}
+
+@keyframes iris-mh-shrink {
+  to {
+    --mh-progress: 1;
+  }
+}
+
+/* Registered as <color> so the scroll-driven animation interpolates rgb stops
+   smoothly. initial-value seeds first paint before the animation runs; per the
+   CSS Properties and Values spec it must be a literal (no var()), so keep this
+   hex in sync with `vintage.info` in panda.config.ts. */
+@property --iris-scroll-color {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #0288d1;
+}
+
+/* Bottom-left clipboard-copy toast: slide up + fade in, hold, then fade out
+   over the lifetime of the React-side timeout. */
+@keyframes iris-toast-in {
+  0% { opacity: 0; transform: translateY(8px); }
+  10% { opacity: 1; transform: translateY(0); }
+  85% { opacity: 1; transform: translateY(0); }
+  100% { opacity: 0; transform: translateY(4px); }
+}
+
+@keyframes iris-scroll-rainbow {
+  0% { --iris-scroll-color: var(--colors-vintage-info); }
+  25% { --iris-scroll-color: var(--colors-vintage-primary); }
+  50% { --iris-scroll-color: var(--colors-vintage-secondary); }
+  75% { --iris-scroll-color: var(--colors-vintage-warning); }
+  100% { --iris-scroll-color: var(--colors-vintage-error); }
+}
+
 /* Self-hosted fonts (all SIL-OFL except Yellowtail, Apache-2.0) — see
    public/fonts/LICENSES.txt. Files are synced via `pnpm fonts:sync`. */
 
@@ -69,15 +110,10 @@
     --font-kaushan-script: "Kaushan Script", cursive;
     --font-grand-hotel: "Grand Hotel", cursive;
 
-    --font-heading: var(--font-yellowtail);
+    --font-heading: var(--font-aladin);
     /* default groovy heading */
     --font-body: "Space Grotesk", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
     --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
-
-    /* Scrollbar thumb color, travelled through the masthead's five-band rainbow
-       as the page scrolls (root.tsx sets it from scroll position). Seeded with
-       the top-of-page band for first paint before JS runs. */
-    --iris-scroll-color: #0288d1;
   }
 
   /* The styleguide switcher sets data-heading-font on <html>. */
@@ -109,6 +145,18 @@
     /* The sticky header resizes on scroll; without this, scroll anchoring
        counter-adjusts the scroll position and the header jitters. */
     overflow-anchor: none;
+
+    /* Travel --iris-scroll-color through the rainbow over the full document
+       scroll range. Browsers without scroll-driven animations (Firefox) keep
+       the @property initial-value (top band) — graceful decorative fallback. */
+    @supports ((animation-timeline: scroll()) and (animation-range: 0% 100%)) {
+      animation: iris-scroll-rainbow auto linear both;
+      animation-timeline: scroll(root);
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      animation: none;
+    }
   }
 
   body {

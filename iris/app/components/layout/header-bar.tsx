@@ -1,11 +1,7 @@
-import { useEffect, useState } from 'react';
 import { Link } from 'react-router';
 import { sva } from 'styled-system/css';
 import { Box, Container, Flex, styled } from 'styled-system/jsx';
 import { BreadCrumbs } from '~/components/layout/bread-crumbs';
-
-// The iris signature: a five-band rainbow rule drawn from the vintage palette.
-const RAINBOW = ['#0288d1', '#669fb2', '#87aa7e', '#edbf02', '#e06c21'];
 
 // Display-only: capitalize the first character of every dot-separated label
 // (example.com → Example.Com). The host stays raw in the loader.
@@ -18,8 +14,9 @@ export function titleCaseHost(host: string): string {
 
 // Masthead geometry as a Panda slot recipe: `base` is the phone size, `md` the
 // desktop size (default breakpoints — no panda.config change). The row height
-// interpolates --mh-tall → --mh-short by --mh-progress, the only runtime value,
-// which JS sets from scroll; logo + title derive from that height in CSS.
+// interpolates --mh-tall → --mh-short by --mh-progress; a scroll-driven CSS
+// animation moves --mh-progress 0→1 over the first half-viewport of scroll.
+// Logo + title derive from that height in CSS.
 const masthead = sva({
   slots: ['root', 'row', 'link', 'logo', 'title'],
   base: {
@@ -33,6 +30,17 @@ const masthead = sva({
       bg: 'bg.default',
       borderBottomWidth: '1px',
       borderColor: 'border.default',
+      // Decorative shrink. Browsers without scroll-driven animations (Firefox)
+      // keep --mh-progress at its registered 0 and render the tall masthead.
+      '@supports ((animation-timeline: scroll()) and (animation-range: 0% 100%))':
+        {
+          animation: 'iris-mh-shrink auto linear both',
+          animationTimeline: 'scroll(block root)',
+          animationRange: '0 50vh',
+        },
+      '@media (prefers-reduced-motion: reduce)': {
+        animation: 'none',
+      },
     },
     row: {
       display: 'flex',
@@ -78,12 +86,12 @@ function IrisMark({ className }: { className?: string }) {
         aria-hidden="true"
         style={{ width: '100%', height: '100%', display: 'block' }}
       >
-        <rect width="32" height="32" rx="7" fill="#271e16" />
-        <circle cx="16" cy="16" r="14" fill="#e06c21" />
-        <circle cx="16" cy="16" r="11" fill="#edbf02" />
-        <circle cx="16" cy="16" r="8" fill="#87aa7e" />
-        <circle cx="16" cy="16" r="5.2" fill="#669fb2" />
-        <circle cx="16" cy="16" r="2.3" fill="#271e16" />
+        <rect width="32" height="32" rx="7" style={{ fill: 'var(--colors-vintage-bg)' }} />
+        <circle cx="16" cy="16" r="14" style={{ fill: 'var(--colors-vintage-error)' }} />
+        <circle cx="16" cy="16" r="11" style={{ fill: 'var(--colors-vintage-warning)' }} />
+        <circle cx="16" cy="16" r="8" style={{ fill: 'var(--colors-vintage-secondary)' }} />
+        <circle cx="16" cy="16" r="5.2" style={{ fill: 'var(--colors-vintage-primary)' }} />
+        <circle cx="16" cy="16" r="2.3" style={{ fill: 'var(--colors-vintage-bg)' }} />
       </svg>
     </Box>
   );
@@ -93,32 +101,15 @@ export function HeaderBar({ host }: { host: string }) {
   const title = titleCaseHost(host);
   const ui = masthead();
 
-  // 0 at the top → 1 once half a viewport has scrolled (shrinks at 2× rate).
-  // Client-only; SSR seeds 0 (tall), corrected on mount.
-  const [progress, setProgress] = useState(0);
-  useEffect(() => {
-    let raf = 0;
-    const update = () => {
-      raf = 0;
-      setProgress(Math.min(1, window.scrollY / Math.max(1, window.innerHeight / 2)));
-    };
-    const onScroll = () => {
-      if (!raf) raf = requestAnimationFrame(update);
-    };
-    update();
-    window.addEventListener('scroll', onScroll, { passive: true });
-    return () => {
-      window.removeEventListener('scroll', onScroll);
-      if (raf) cancelAnimationFrame(raf);
-    };
-  }, []);
-
   return (
-    <header className={ui.root} style={{ '--mh-progress': progress } as React.CSSProperties}>
+    <header className={ui.root}>
+      {/* The iris signature: a five-band rainbow rule from the vintage palette. */}
       <Flex height="3px" aria-hidden="true">
-        {RAINBOW.map((color) => (
-          <Box key={color} flex="1" style={{ backgroundColor: color }} />
-        ))}
+        <Box flex="1" bg="vintage.info" />
+        <Box flex="1" bg="vintage.primary" />
+        <Box flex="1" bg="vintage.secondary" />
+        <Box flex="1" bg="vintage.warning" />
+        <Box flex="1" bg="vintage.error" />
       </Flex>
       <Container maxW="5xl" px="6">
         <div className={ui.row}>

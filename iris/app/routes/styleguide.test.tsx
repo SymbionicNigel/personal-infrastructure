@@ -1,4 +1,4 @@
-import { screen } from '@testing-library/react';
+import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { expect, test } from 'vitest';
 import { HEADING_FONTS } from '~/fonts';
@@ -7,7 +7,8 @@ import Styleguide from './styleguide';
 
 test('renders a switcher button for every heading font', () => {
   renderWithI18n(<Styleguide />);
-  expect(screen.getAllByRole('button')).toHaveLength(HEADING_FONTS.length);
+  const group = screen.getByRole('group', { name: 'Heading font' });
+  expect(within(group).getAllByRole('button')).toHaveLength(HEADING_FONTS.length);
 });
 
 test('selecting a font marks it pressed and applies it to <html>', async () => {

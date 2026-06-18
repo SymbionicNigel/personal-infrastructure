@@ -44,9 +44,13 @@ services:
       - '3000:3000'
     volumes:
       # Host source bind-mounted over /app/app so `react-router dev` HMR picks
-      # up edits without rebuilding (node_modules + styled-system stay in the
-      # image). Traefik redirect labels are inert locally (no local proxy).
+      # up edits without rebuilding. Panda config + generated styled-system are
+      # mounted too so `pnpm panda codegen` on the host (or via `compose exec`)
+      # propagates token changes into the running PostCSS pipeline without an
+      # image rebuild. Traefik redirect labels are inert locally (no proxy).
       - ../iris/app:/app/app
+      - ../iris/panda.config.ts:/app/panda.config.ts
+      - ../iris/styled-system:/app/styled-system
 
   janus:
     ports:

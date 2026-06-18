@@ -1,0 +1,45 @@
+{
+  "appName": "iris",
+  "tagline": "le lien visible entre les dieux et les mortels",
+  "nav": {
+    "home": "Accueil",
+    "styleguide": "Charte graphique"
+  },
+  "home": {
+    "title": "iris",
+    "intro": "Le visage visible de l'infrastructure — un petit messager entre les services et ceux qui les utilisent."
+  },
+  "styleguide": {
+    "title": "Charte graphique",
+    "intro": "Tokens de design, typographie et composants — les briques d'iris.",
+    "headingFont": "Police des titres",
+    "headingFontIntro": "Choisissez une face — elle s'applique à tous les titres du site (et reste mémorisée).",
+    "palette": "Palette",
+    "type": "Typographie",
+    "typeDisplay": "Le lien visible",
+    "typeBody": "Le texte courant utilise Space Grotesk — portez ce vieux whisky au juge blond qui fume. 0123456789",
+    "browserFeatures": {
+      "title": "Fonctionnalités navigateur",
+      "intro": "Fonctionnalités web que nous utilisons mais qui ne sont pas encore activées par défaut partout. Le statut est détecté en direct dans votre navigateur.",
+      "configHintPrefix": "Pour les activer, ouvrez",
+      "configHintSuffix": "dans la barre d'adresse."
+    },
+    "status": {
+      "detecting": "détection",
+      "on": "activé",
+      "off": "désactivé"
+    },
+    "copy": "copier",
+    "copied": "copié",
+    "features": {
+      "scroll-driven-animations": {
+        "name": "Animations déclenchées par défilement",
+        "usedFor": "Le rétrécissement de l'en-tête et la barre de défilement arc-en-ciel de ce site."
+      }
+    }
+  },
+  "notFound": {
+    "title": "404",
+    "message": "Cette page a dérivé au bout de l'arc-en-ciel."
+  }
+}
