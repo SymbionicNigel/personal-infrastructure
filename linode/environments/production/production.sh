@@ -32,13 +32,6 @@ add_or_merge_to_chezmoi() {
     fi
 }
 
-# Repo owner is the GHCR login username for the host's docker login. CI provides
-# it; locally fall back to the origin remote via gh. (GHCR usernames are
-# case-insensitive, so no lowercasing needed here.)
-OWNER="${GITHUB_REPOSITORY_OWNER:-$(gh repo view --json owner --jq '.owner.login')}"
-: "${OWNER:?could not determine repo owner (set GITHUB_REPOSITORY_OWNER or run gh auth login)}"
-export TF_VAR_GHCR_USER="$OWNER"
-
 terraform init -backend-config=backend.hcl
 
 # TF_DETECT_CHANGES=true (CI plan job) runs plan with -detailed-exitcode and

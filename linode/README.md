@@ -103,14 +103,15 @@ replaces `/etc/dokploy` and the `dokploy` database with the archive contents and
 restarts. No client-side decryption is needed — these archives are not GPG
 encrypted; confidentiality relies on bucket-side encryption.
 
-### Stage 2.5 — GHCR pull credential
+### GHCR pull credential
 
 The astarte image (and any future GHCR-hosted service) is published to a
 private GHCR namespace, so the Dokploy host needs `docker login`
-credentials before a deploy can pull. This is automated by
-`null_resource.ghcr_login` in the production environment: it SSHes to the
-host and runs `docker login ghcr.io` as root, re-running only when the PAT
-or the host changes (so rotation and host rebuilds are hands-off).
+credentials before a deploy can pull. This is owned by the **dokploy**
+environment via `terraform_data.ghcr_registry`, which calls Dokploy's
+`registry.create`/`registry.update` — Dokploy then runs `docker login
+ghcr.io` on the host (writing `/root/.docker/config.json`). Re-runs only
+when the PAT changes, so rotation is hands-off.
 
 Setup:
 
@@ -120,12 +121,13 @@ Setup:
    - Permissions: `Packages: Read-only` (use a classic PAT with
      `read:packages` if the fine-grained token won't authenticate to GHCR)
    - Expiration: 1 year
-2. Add it (and your GitHub username) to the production `.env` via chezmoi:
-   `TF_VAR_GHCR_USER=<github-user>` and `TF_VAR_GHCR_PAT=<pat>`.
-3. `terraform apply` the production environment — the host is logged in.
+2. Add it to the dokploy `.env` via chezmoi: `TF_VAR_GHCR_PAT=<pat>`. The
+   username is the repo owner, supplied automatically by `dokploy.sh` as
+   `TF_VAR_GHCR_OWNER`.
+3. `terraform apply` the dokploy environment — the host is logged in.
 
-Survives reboots. Host rebuild and PAT rotation re-apply automatically on
-the next `terraform apply` (the PAT hash is a resource trigger).
+Survives reboots. PAT rotation re-applies automatically on the next
+`bash dokploy.sh` (the cred hash is a `triggers_replace` value).
 
 ## Rationale
 
