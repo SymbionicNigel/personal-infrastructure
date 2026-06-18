@@ -50,6 +50,10 @@ locals {
   traefik_yaml = <<-YAML
     global:
       sendAnonymousUsage: false
+    accessLog:
+      filePath: /etc/dokploy/traefik/dynamic/access.log
+      format: json
+      bufferingSize: 100
     providers:
       swarm:
         exposedByDefault: false

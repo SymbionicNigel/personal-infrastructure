@@ -41,9 +41,9 @@ cd linode/environments/production && bash production.sh
 
 Stands up everything the host needs to exist before Dokploy can be talked
 to as a Terraform provider: the Linode instance, firewall, DNS zone,
-wildcard records, ACME DNS-01 config, the encrypted `acme.json` backup
-job, and a daily encrypted `pg_dump` of `dokploy-postgres` (restore is
-operator-driven; see [modules/dokploy-postgres-backup/RESTORE.md](./modules/dokploy-postgres-backup/RESTORE.md)).
+wildcard records, ACME DNS-01 config, and the encrypted `acme.json` backup
+job. The control-plane database backup is Dokploy-native and configured in
+Stage 2.
 DNS-01 is configured up-front (rather than relying on Dokploy's
 default HTTP-01) so the dashboard's first cert issuance and any future
 wildcard certs don't depend on port-80 reachability or DNS propagation
@@ -87,6 +87,21 @@ across local and prod so the same compose file describes both.
 manual deploy, export it (or set it in `linode/environments/dokploy/.env`) before
 `dokploy.sh`. The `latest` default is intentionally unused so deploys are
 explicit and reproducible.
+
+### Control-plane backup/restore
+
+The control-plane backup is Dokploy's native Web Server backup: a nightly
+`pg_dump` of `dokploy-postgres` plus `/etc/dokploy`, zipped and uploaded to
+`s3://<infra-backups>/<appName>/control-plane/`. It is created by
+`module.control_plane_backup` (dokploy env) on the shared `linode-object-storage`
+destination, schedule `0 4 * * *` UTC.
+
+Restore is an operator action in the panel (the API restore path is a websocket
+subscription, not curl-friendly): **Web Server → Backups**, select the
+`webserver-backup-<ts>.zip` from the destination, and **Restore**. Dokploy
+replaces `/etc/dokploy` and the `dokploy` database with the archive contents and
+restarts. No client-side decryption is needed — these archives are not GPG
+encrypted; confidentiality relies on bucket-side encryption.
 
 ### Stage 2.5 — GHCR pull credential
 
@@ -158,8 +173,10 @@ state.
 Object Storage credentials are deliberately not threaded through `.env` for
 provider auth: `provider "linode"` is configured with `obj_use_temp_keys`,
 which mints short-lived obj keys per apply. The only long-lived obj key in
-the system is the one used by the host for `acme.json` backups, and that
-one is rotated by `time_rotating` (see Stage 1 above).
+the system is the infra-backups key (acme-backup module), shared by the
+host's `acme.json` backup job and Dokploy's native backup destination. It is
+not rotated: Dokploy stores the destination credentials statically and can't
+track a rotation, so the key is kept stable.
 
 The canonical list of inputs for the production environment is the file
 [environments/production/variables.tf](./environments/production/variables.tf);

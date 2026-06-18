@@ -28,12 +28,6 @@ variable "instance_ip" {
   description = "IPv4 address of the Dokploy instance to configure and restore onto"
 }
 
-variable "key_rotation_trigger" {
-  type        = string
-  nullable    = false
-  description = "Opaque value that, when changed, forces replacement of the object-storage access key. Wire to a time_rotating.rotation_rfc3339."
-}
-
 variable "endpoint" {
   type        = string
   nullable    = false

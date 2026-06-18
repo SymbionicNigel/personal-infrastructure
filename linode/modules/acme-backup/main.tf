@@ -11,10 +11,6 @@ terraform {
   }
 }
 
-resource "terraform_data" "key_rotation" {
-  input = var.key_rotation_trigger
-}
-
 resource "linode_object_storage_key" "infra_backups" {
   label = "${var.resource_prefix}-infra-backups-rw"
 
@@ -22,10 +18,6 @@ resource "linode_object_storage_key" "infra_backups" {
     bucket_name = var.bucket_name
     region      = var.region
     permissions = "read_write"
-  }
-
-  lifecycle {
-    replace_triggered_by = [terraform_data.key_rotation]
   }
 }
 

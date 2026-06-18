@@ -2,7 +2,7 @@ terraform {
   required_providers {
     dokploy = {
       source  = "j0bIT/dokploy"
-      version = "0.3.0"
+      version = "0.4.0"
     }
     dotenv = {
       source  = "germanbrew/dotenv"
@@ -96,5 +96,106 @@ resource "terraform_data" "redeploy" {
     EOT
   }
 
-  depends_on = [dokploy_compose.stack]
+  depends_on = [dokploy_compose.stack, terraform_data.ghcr_registry]
+}
+
+# Shared S3 destination for Dokploy's native backups. Credentials are the
+# infra-backups bucket key surfaced by the production env (dokploy_backups_*
+# outputs), supplied via the chezmoi-managed .env as TF_VAR_DOKPLOY_BACKUP_*.
+resource "dokploy_backup_destination" "linode" {
+  name              = "linode-object-storage"
+  bucket            = var.DOKPLOY_BACKUP_BUCKET
+  endpoint          = var.DOKPLOY_BACKUP_ENDPOINT
+  region            = var.DOKPLOY_BACKUP_REGION
+  access_key_id     = var.DOKPLOY_BACKUP_ACCESS_KEY_ID
+  secret_access_key = var.DOKPLOY_BACKUP_SECRET_ACCESS_KEY
+}
+
+# Native control-plane backup: dumps the dokploy-postgres DB + /etc/dokploy to
+# the shared destination nightly. Replaces the dokploy-postgres-backup module.
+module "control_plane_backup" {
+  source = "../../modules/dokploy-scheduled-backup"
+
+  api_base       = "https://vulcan.${local.hostname_tld}/api"
+  api_key        = var.DOKPLOY_API_KEY
+  destination_id = dokploy_backup_destination.linode.id
+  database_type  = "web-server"
+  database       = "dokploy"
+  prefix         = "control-plane/"
+  schedule       = "0 4 * * *" # daily 04:00 UTC; offset from Pelican's 03:00
+}
+
+# Bound access.log growth via Dokploy's built-in cleanup (daily 00:00 UTC).
+resource "terraform_data" "log_cleanup" {
+  triggers_replace = "0 0 * * *"
+
+  provisioner "local-exec" {
+    environment = { DOKPLOY_API_KEY = var.DOKPLOY_API_KEY }
+    interpreter = ["bash", "-c"]
+    command     = <<-EOT
+      set -euo pipefail
+      curl -sf -X POST "https://vulcan.${local.hostname_tld}/api/settings.updateLogCleanup" \
+        -H "x-api-key: $DOKPLOY_API_KEY" -H "Content-Type: application/json" \
+        --data '{"cronExpression":"0 0 * * *"}' >/dev/null
+      echo "log-cleanup cron set"
+    EOT
+  }
+}
+
+# Read existing registries so we update-in-place (re-login) rather than create a
+# duplicate — registry.create has no upsert and no name uniqueness.
+data "http" "registries" {
+  url    = "https://vulcan.${local.hostname_tld}/api/trpc/registry.all"
+  method = "GET"
+  request_headers = {
+    "x-api-key"    = var.DOKPLOY_API_KEY
+    "Content-Type" = "application/json"
+  }
+  lifecycle {
+    postcondition {
+      condition     = self.status_code == 200
+      error_message = "registry.all returned ${self.status_code}: ${self.response_body}"
+    }
+  }
+}
+
+locals {
+  ghcr_registry_url  = "ghcr.io"
+  ghcr_registry_name = "ghcr"
+  ghcr_registry_id = try(one([
+    for r in jsondecode(data.http.registries.response_body).result.data.json :
+    r.registryId if r.registryUrl == local.ghcr_registry_url
+  ]), null)
+}
+
+# Create-or-update the ghcr registry. Either path runs `docker login ghcr.io` on
+# the host (Dokploy sets registryType=cloud → execAsync). triggers_replace on the
+# cred hash means a PAT rotation re-runs the login, preserving today's behaviour.
+resource "terraform_data" "ghcr_registry" {
+  triggers_replace = sha256(join("|", [var.GHCR_OWNER, var.GHCR_PAT]))
+
+  provisioner "local-exec" {
+    environment = {
+      DOKPLOY_API_KEY = var.DOKPLOY_API_KEY
+      GHCR_USER       = var.GHCR_OWNER
+      GHCR_PAT        = var.GHCR_PAT
+    }
+    interpreter = ["bash", "-c"]
+    command     = <<-EOT
+      set -euo pipefail
+      base="https://vulcan.${local.hostname_tld}/api"
+      common=$(python3 -c 'import json,os;print(json.dumps({"registryName":"${local.ghcr_registry_name}","username":os.environ["GHCR_USER"],"password":os.environ["GHCR_PAT"],"registryUrl":"ghcr.io","registryType":"cloud"}))')
+      rid='${local.ghcr_registry_id == null ? "" : local.ghcr_registry_id}'
+      if [ -n "$rid" ]; then
+        body=$(python3 -c 'import json,sys; d=json.loads(sys.argv[1]); d["registryId"]=sys.argv[2]; print(json.dumps(d))' "$common" "$rid")
+        curl -sf -X POST "$base/registry.update" -H "x-api-key: $DOKPLOY_API_KEY" \
+          -H "Content-Type: application/json" --data "$body" >/dev/null
+        echo "ghcr registry updated (host re-logged in)"
+      else
+        curl -sf -X POST "$base/registry.create" -H "x-api-key: $DOKPLOY_API_KEY" \
+          -H "Content-Type: application/json" --data "$common" >/dev/null
+        echo "ghcr registry created (host logged in)"
+      fi
+    EOT
+  }
 }
