@@ -91,12 +91,26 @@ fi
 
 API_KEY=$(cat "$API_KEY_FILE")
 
+# Backup-destination creds for the dokploy stage are this env's outputs (the
+# shared infra-backups key + bucket). Handed off so the dokploy stage's
+# dokploy_backup_destination can authenticate without a separate secret entry.
+DOKPLOY_BACKUP_BUCKET=$(terraform output -raw dokploy_backups_bucket)
+DOKPLOY_BACKUP_ENDPOINT=$(terraform output -raw dokploy_backups_endpoint)
+DOKPLOY_BACKUP_REGION=$(terraform output -raw dokploy_backups_region)
+DOKPLOY_BACKUP_ACCESS_KEY_ID=$(terraform output -raw dokploy_backups_access_key)
+DOKPLOY_BACKUP_SECRET_ACCESS_KEY=$(terraform output -raw dokploy_backups_secret_key)
+
 # Hand off to the dokploy stage by generating its .env
 cat > "../dokploy/.env" << EOF
 TF_VAR_DOKPLOY_API_KEY=$API_KEY
 TF_VAR_DOKPLOY_PROJECT_NAME=${TF_VAR_DOKPLOY_PROJECT_NAME:-services}
 AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID
 AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY
+TF_VAR_DOKPLOY_BACKUP_BUCKET=$DOKPLOY_BACKUP_BUCKET
+TF_VAR_DOKPLOY_BACKUP_ENDPOINT=$DOKPLOY_BACKUP_ENDPOINT
+TF_VAR_DOKPLOY_BACKUP_REGION=$DOKPLOY_BACKUP_REGION
+TF_VAR_DOKPLOY_BACKUP_ACCESS_KEY_ID=$DOKPLOY_BACKUP_ACCESS_KEY_ID
+TF_VAR_DOKPLOY_BACKUP_SECRET_ACCESS_KEY=$DOKPLOY_BACKUP_SECRET_ACCESS_KEY
 EOF
 
 # Move to root of repository to add files to secrets submodule

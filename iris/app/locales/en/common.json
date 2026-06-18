@@ -12,7 +12,31 @@
   "styleguide": {
     "title": "Styleguide",
     "intro": "Design tokens, type, and components — the building blocks of iris.",
-    "headingFont": "Heading font"
+    "headingFont": "Heading font",
+    "headingFontIntro": "Pick a face — it sets the heading font across the whole site (and is remembered).",
+    "palette": "Palette",
+    "type": "Type",
+    "typeDisplay": "The visible link",
+    "typeBody": "Body copy is set in Space Grotesk — the quick brown fox jumps over the lazy dog. 0123456789",
+    "browserFeatures": {
+      "title": "Browser features",
+      "intro": "Web features we rely on that aren't yet on by default everywhere. Status is detected live in your browser.",
+      "configHintPrefix": "To toggle these, open",
+      "configHintSuffix": "in your address bar."
+    },
+    "status": {
+      "detecting": "detecting",
+      "on": "on",
+      "off": "off"
+    },
+    "copy": "copy",
+    "copied": "copied",
+    "features": {
+      "scroll-driven-animations": {
+        "name": "Scroll-driven animations",
+        "usedFor": "The masthead shrink and the rainbow scrollbar on this site."
+      }
+    }
   },
   "notFound": {
     "title": "404",

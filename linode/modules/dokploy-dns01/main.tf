@@ -2,7 +2,7 @@ terraform {
   required_providers {
     linode = {
       source  = "linode/linode"
-      version = "3.4.0"
+      version = "3.14.1"
     }
     null = {
       source  = "hashicorp/null"
@@ -50,6 +50,10 @@ locals {
   traefik_yaml = <<-YAML
     global:
       sendAnonymousUsage: false
+    accessLog:
+      filePath: /etc/dokploy/traefik/dynamic/access.log
+      format: json
+      bufferingSize: 100
     providers:
       swarm:
         exposedByDefault: false

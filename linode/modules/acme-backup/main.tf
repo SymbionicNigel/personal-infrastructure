@@ -2,17 +2,13 @@ terraform {
   required_providers {
     linode = {
       source  = "linode/linode"
-      version = "3.4.0"
+      version = "3.14.1"
     }
     null = {
       source  = "hashicorp/null"
       version = "~> 3.2"
     }
   }
-}
-
-resource "terraform_data" "key_rotation" {
-  input = var.key_rotation_trigger
 }
 
 resource "linode_object_storage_key" "infra_backups" {
@@ -22,10 +18,6 @@ resource "linode_object_storage_key" "infra_backups" {
     bucket_name = var.bucket_name
     region      = var.region
     permissions = "read_write"
-  }
-
-  lifecycle {
-    replace_triggered_by = [terraform_data.key_rotation]
   }
 }
 

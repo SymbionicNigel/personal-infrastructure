@@ -31,7 +31,7 @@ export const links: Route.LinksFunction = () => [
   },
   {
     rel: 'preload',
-    href: '/fonts/yellowtail.woff2',
+    href: '/fonts/aladin.woff2',
     as: 'font',
     type: 'font/woff2',
     crossOrigin: 'anonymous',
@@ -79,60 +79,12 @@ export function Layout({ children }: { children: React.ReactNode }) {
   );
 }
 
-// The masthead's five-band rainbow; the scrollbar thumb (--iris-scroll-color)
-// travels along it as the page scrolls — blue at the top → orange at the bottom.
-const SCROLL_BANDS = ['#0288d1', '#669fb2', '#87aa7e', '#edbf02', '#e06c21'];
-
-function hexToRgb(hex: string): [number, number, number] {
-  return [
-    Number.parseInt(hex.slice(1, 3), 16),
-    Number.parseInt(hex.slice(3, 5), 16),
-    Number.parseInt(hex.slice(5, 7), 16),
-  ];
-}
-
-// Interpolate the bands by scroll progress (0 → 1).
-function scrollbarColor(progress: number): string {
-  const t = Math.min(1, Math.max(0, progress)) * (SCROLL_BANDS.length - 1);
-  const i = Math.min(SCROLL_BANDS.length - 2, Math.floor(t));
-  const f = t - i;
-  const a = hexToRgb(SCROLL_BANDS[i]);
-  const b = hexToRgb(SCROLL_BANDS[i + 1]);
-  const mix = (x: number, y: number) => Math.round(x + (y - x) * f);
-  return `rgb(${mix(a[0], b[0])}, ${mix(a[1], b[1])}, ${mix(a[2], b[2])})`;
-}
-
 export default function App({ loaderData }: Route.ComponentProps) {
   const { i18n } = useTranslation();
   // Keep the client i18next instance in sync with the server-detected locale.
   useEffect(() => {
     if (i18n.language !== loaderData.locale) i18n.changeLanguage(loaderData.locale);
   }, [loaderData.locale, i18n]);
-
-  // Shift the scrollbar thumb through the rainbow as the page scrolls.
-  useEffect(() => {
-    const root = document.documentElement;
-    let raf = 0;
-    const update = () => {
-      raf = 0;
-      const max = root.scrollHeight - window.innerHeight;
-      root.style.setProperty(
-        '--iris-scroll-color',
-        scrollbarColor(max > 0 ? window.scrollY / max : 0),
-      );
-    };
-    const onScroll = () => {
-      if (!raf) raf = requestAnimationFrame(update);
-    };
-    update();
-    window.addEventListener('scroll', onScroll, { passive: true });
-    window.addEventListener('resize', onScroll, { passive: true });
-    return () => {
-      window.removeEventListener('scroll', onScroll);
-      window.removeEventListener('resize', onScroll);
-      if (raf) cancelAnimationFrame(raf);
-    };
-  }, []);
 
   return <Outlet />;
 }

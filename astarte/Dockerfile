@@ -8,7 +8,7 @@
 
 # Common uv base. Aliasing here so dev and builder both start from the
 # same image without inheriting each other's work.
-FROM ghcr.io/astral-sh/uv:python3.13-bookworm-slim AS uv-base
+FROM ghcr.io/astral-sh/uv:python3.14-bookworm-slim AS uv-base
 
 # Dev target: install deps + the package (editable) into a venv, then run
 # uvicorn with --reload watching /app/src. The compose override
@@ -36,7 +36,7 @@ RUN uv build --wheel --out-dir /wheels \
  && uv export --frozen --no-dev --no-emit-project --output-file /wheels/requirements.txt
 
 # Runtime stage: slim python image with the wheel installed. No uv.
-FROM python:3.13-slim AS runtime
+FROM python:3.14-slim AS runtime
 WORKDIR /app
 COPY --from=builder /wheels/ /tmp/wheels/
 # Locked+hashed deps first, then the app wheel --no-deps so pip never

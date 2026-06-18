@@ -2,7 +2,7 @@ terraform {
   required_providers {
     linode = {
       source  = "linode/linode"
-      version = "3.4.0"
+      version = "3.14.1"
     }
     null = {
       source  = "hashicorp/null"
@@ -12,20 +12,9 @@ terraform {
       source  = "hashicorp/local"
       version = "~> 2.5"
     }
-    time = {
-      source  = "hashicorp/time"
-      version = "~> 0.11"
-    }
   }
 
   backend "s3" {}
-}
-
-# Rotate the object-storage access key every 90 days. The key is consumed only
-# by the host's /root/.s3cfg, which Terraform re-pushes via configure_acme_backup
-# whenever the key's access_key changes — so rotation is hands-off.
-resource "time_rotating" "infra_backups_key" {
-  rotation_days = 90
 }
 
 locals {
@@ -234,14 +223,13 @@ resource "local_file" "ssh_config" {
 module "acme_backup" {
   source = "../../modules/acme-backup"
 
-  region               = var.REGION
-  resource_prefix      = local.resource_prefix
-  bucket_name          = linode_object_storage_bucket.infra_backups.label
-  endpoint             = linode_object_storage_bucket.infra_backups.s3_endpoint
-  gpg_recipient        = var.GPG_RECIPIENT
-  instance_ip          = module.dokploy-instance.instance_ip
-  key_rotation_trigger = time_rotating.infra_backups_key.rotation_rfc3339
-  deploy_user          = module.dokploy-instance.deploy_user
+  region          = var.REGION
+  resource_prefix = local.resource_prefix
+  bucket_name     = linode_object_storage_bucket.infra_backups.label
+  endpoint        = linode_object_storage_bucket.infra_backups.s3_endpoint
+  gpg_recipient   = var.GPG_RECIPIENT
+  instance_ip     = module.dokploy-instance.instance_ip
+  deploy_user     = module.dokploy-instance.deploy_user
 }
 
 # Encrypted daily snapshot of Dokploy's internal postgres. Reuses /root/.s3cfg
