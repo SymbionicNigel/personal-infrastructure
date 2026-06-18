@@ -58,7 +58,6 @@ const copyButton = css({
   _hover: { borderColor: 'vintage.primary', color: 'vintage.primary' },
 });
 
-
 // Web features we use that aren't yet on-by-default in every modern browser.
 // Each entry pairs a `CSS.supports` probe with per-browser enable instructions
 // so the page can show live status and a one-click pref copy when relevant.
@@ -158,9 +157,7 @@ export default function Styleguide() {
       typeof CSS !== 'undefined' && typeof CSS.supports === 'function'
         ? (q: string) => CSS.supports(q)
         : () => false;
-    const next = Object.fromEntries(
-      BROWSER_FEATURES.map((f) => [f.id, supports(f.supportsQuery)]),
-    );
+    const next = Object.fromEntries(BROWSER_FEATURES.map((f) => [f.id, supports(f.supportsQuery)]));
     setFeatureSupport((prev) => {
       if (prev === null) return next;
       const sameKeys =
@@ -282,16 +279,10 @@ export default function Styleguide() {
             const supported = featureSupport?.[f.id] ?? null;
             const showFirefoxHint = browser === 'firefox' && supported === false;
             const statusWord = t(
-              `styleguide.status.${
-                supported === null ? 'detecting' : supported ? 'on' : 'off'
-              }`,
+              `styleguide.status.${supported === null ? 'detecting' : supported ? 'on' : 'off'}`,
             );
             const statusToken =
-              supported === null
-                ? 'fg.muted'
-                : supported
-                  ? 'vintage.success'
-                  : 'vintage.error';
+              supported === null ? 'fg.muted' : supported ? 'vintage.success' : 'vintage.error';
             const statusVar = `var(--colors-${statusToken.replace('.', '-')})`;
             const copy = (
               <button
@@ -304,13 +295,7 @@ export default function Styleguide() {
             );
 
             return (
-              <Box
-                key={f.id}
-                pt="3"
-                pb="4"
-                borderTopWidth="1px"
-                borderColor="border.default"
-              >
+              <Box key={f.id} pt="3" pb="4" borderTopWidth="1px" borderColor="border.default">
                 {/* Title row with dotted ledger leader between title and chip. */}
                 <Box display="flex" alignItems="baseline" gap="3">
                   <styled.span fontWeight="medium">
@@ -379,7 +364,15 @@ export default function Styleguide() {
                       gap="3"
                       minW="0"
                     >
-                      <styled.code fontFamily="mono" fontSize="sm" flex="1" minW="0" overflow="hidden" textOverflow="ellipsis" whiteSpace="nowrap">
+                      <styled.code
+                        fontFamily="mono"
+                        fontSize="sm"
+                        flex="1"
+                        minW="0"
+                        overflow="hidden"
+                        textOverflow="ellipsis"
+                        whiteSpace="nowrap"
+                      >
                         {f.firefoxPref}
                       </styled.code>
                       {copy}
@@ -417,7 +410,15 @@ export default function Styleguide() {
           <styled.span fontSize="sm" color="vintage.primary" fontWeight="medium">
             {t('styleguide.copied')}
           </styled.span>
-          <styled.code fontFamily="mono" fontSize="xs" color="fg.muted" overflow="hidden" textOverflow="ellipsis" whiteSpace="nowrap" minW="0">
+          <styled.code
+            fontFamily="mono"
+            fontSize="xs"
+            color="fg.muted"
+            overflow="hidden"
+            textOverflow="ellipsis"
+            whiteSpace="nowrap"
+            minW="0"
+          >
             {toast.text}
           </styled.code>
         </Box>

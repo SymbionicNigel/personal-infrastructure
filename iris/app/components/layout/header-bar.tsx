@@ -32,12 +32,11 @@ const masthead = sva({
       borderColor: 'border.default',
       // Decorative shrink. Browsers without scroll-driven animations (Firefox)
       // keep --mh-progress at its registered 0 and render the tall masthead.
-      '@supports ((animation-timeline: scroll()) and (animation-range: 0% 100%))':
-        {
-          animation: 'iris-mh-shrink auto linear both',
-          animationTimeline: 'scroll(block root)',
-          animationRange: '0 50vh',
-        },
+      '@supports ((animation-timeline: scroll()) and (animation-range: 0% 100%))': {
+        animation: 'iris-mh-shrink auto linear both',
+        animationTimeline: 'scroll(block root)',
+        animationRange: '0 50vh',
+      },
       '@media (prefers-reduced-motion: reduce)': {
         animation: 'none',
       },

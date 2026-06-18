@@ -27,18 +27,40 @@
 /* Bottom-left clipboard-copy toast: slide up + fade in, hold, then fade out
    over the lifetime of the React-side timeout. */
 @keyframes iris-toast-in {
-  0% { opacity: 0; transform: translateY(8px); }
-  10% { opacity: 1; transform: translateY(0); }
-  85% { opacity: 1; transform: translateY(0); }
-  100% { opacity: 0; transform: translateY(4px); }
+  0% {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  10% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  85% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(4px);
+  }
 }
 
 @keyframes iris-scroll-rainbow {
-  0% { --iris-scroll-color: var(--colors-vintage-info); }
-  25% { --iris-scroll-color: var(--colors-vintage-primary); }
-  50% { --iris-scroll-color: var(--colors-vintage-secondary); }
-  75% { --iris-scroll-color: var(--colors-vintage-warning); }
-  100% { --iris-scroll-color: var(--colors-vintage-error); }
+  0% {
+    --iris-scroll-color: var(--colors-vintage-info);
+  }
+  25% {
+    --iris-scroll-color: var(--colors-vintage-primary);
+  }
+  50% {
+    --iris-scroll-color: var(--colors-vintage-secondary);
+  }
+  75% {
+    --iris-scroll-color: var(--colors-vintage-warning);
+  }
+  100% {
+    --iris-scroll-color: var(--colors-vintage-error);
+  }
 }
 
 /* Self-hosted fonts (all SIL-OFL except Yellowtail, Apache-2.0) — see
