@@ -50,6 +50,18 @@ CI runs the same three commands plus `pytest` on every PR touching
 `astarte/**`. Lint or license failures stop the pipeline before the
 image is built.
 
+## Generated artifacts
+
+`openapi.json` is committed and consumed by iris (see `iris/README.md`). It is
+emitted from the running FastAPI app's schema, so it changes whenever a
+Pydantic model or route signature does. Regenerate after such changes:
+
+```bash
+uv run python scripts/emit_openapi.py openapi.json
+```
+
+CI's `typegen` job runs the same command and fails on diff.
+
 ## Container (standalone)
 
 To build the production image without the rest of the stack:

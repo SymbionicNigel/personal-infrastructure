@@ -16,8 +16,9 @@ FROM ghcr.io/astral-sh/uv:python3.14-bookworm-slim AS uv-base
 FROM uv-base AS dev
 WORKDIR /app
 ENV UV_LINK_MODE=copy
-COPY pyproject.toml uv.lock README.md ./
+COPY pyproject.toml uv.lock README.md alembic.ini ./
 COPY src/ ./src/
+COPY alembic/ ./alembic/
 RUN uv sync --frozen
 EXPOSE 8000
 CMD ["uv", "run", "uvicorn", "astarte.main:app", \
@@ -30,8 +31,9 @@ FROM uv-base AS builder
 WORKDIR /build
 ENV UV_LINK_MODE=copy \
     UV_COMPILE_BYTECODE=1
-COPY pyproject.toml uv.lock README.md ./
+COPY pyproject.toml uv.lock README.md alembic.ini ./
 COPY src/ ./src/
+COPY alembic/ ./alembic/
 RUN uv build --wheel --out-dir /wheels \
  && uv export --frozen --no-dev --no-emit-project --output-file /wheels/requirements.txt
 
@@ -44,6 +46,12 @@ COPY --from=builder /wheels/ /tmp/wheels/
 RUN pip install --no-cache-dir -r /tmp/wheels/requirements.txt \
  && pip install --no-cache-dir --no-deps /tmp/wheels/*.whl \
  && rm -rf /tmp/wheels
+
+# Alembic config + migrations: not in the wheel (the wheel ships only the
+# `astarte` package), so copy them into the runtime image so production
+# can run `alembic upgrade head`.
+COPY --from=builder /build/alembic.ini ./
+COPY --from=builder /build/alembic/ ./alembic/
 
 # Non-root runtime. UID 1000 is conventional and plays well with
 # bind-mounted volumes from a typical dev host.
