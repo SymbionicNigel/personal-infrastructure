@@ -15,7 +15,9 @@
     "prepare": "panda codegen",
     "start": "react-router-serve ./build/server/index.js",
     "test": "vitest run",
-    "typecheck": "react-router typegen && tsc"
+    "typecheck": "react-router typegen && tsc",
+    "typegen:api": "openapi-typescript ../astarte/openapi.json -o app/generated/api.d.ts",
+    "typegen:db": "drizzle-kit pull && rm -rf app/generated/meta app/generated/0000_*.sql"
   },
   "dependencies": {
     "@ark-ui/react": "^5.37.2",
@@ -40,10 +42,16 @@
     "@testing-library/react": "^16.3.2",
     "@testing-library/user-event": "^14.6.1",
     "@types/node": "^25",
+    "@types/pg": "^8.20.0",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.2",
+    "dotenv": "^16.4.5",
+    "drizzle-kit": "^0.31.10",
+    "drizzle-orm": "^0.45.2",
     "jsdom": "^29.1.1",
+    "openapi-typescript": "^7.13.0",
+    "pg": "^8.21.0",
     "typescript": "^6.0.3",
     "vite": "^8.0.3",
     "vitest": "^4.1.9"
