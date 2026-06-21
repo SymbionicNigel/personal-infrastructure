@@ -1,26 +1,19 @@
 # Base compose: prod-shaped, the single source of truth for service
 # definitions across both environments.
 #
+# Env wiring contract: docs/guides/env-wiring.md.
+#
 #   Production: consumed by Dokploy via `dokploy_compose` in
 #     linode/environments/dokploy/main.tf. Terraform inlines this file
-#     via templatefile() and substitutes the HOSTNAME_TLD value at apply
-#     time. Dokploy's bundled Traefik picks up the labels below and
-#     routes accordingly.
+#     via templatefile() and pushes the per-service env maps to
+#     Dokploy's compose-scoped environment, where compose's standard
+#     ${VAR} substitution resolves them at deploy time.
 #
 #   Local: `docker compose up` auto-loads docker-compose.override.yml
-#     alongside this file. The override adds `ports:` per service so
-#     each is reachable at http://localhost:<port>. There is no local
-#     Traefik; the labels below are metadata only when run locally.
-#
-# To add a service:
-#   1. Append a service block following the `astarte` pattern (image,
-#      labels, networks, restart). Use `janus` as the minimal reference
-#      for image-only services without healthcheck.
-#   2. Add Traefik labels (hardcoded prod values; only the HOSTNAME_TLD
-#      and ${GHCR_OWNER}/${ASTARTE_IMAGE_TAG} values are interpolated).
-#   3. In docker-compose.override.yml, add a `ports:` mapping so the
-#      service is reachable locally. For source-built services, also add
-#      `build` (targeting the dev stage) and a source bind-mount.
+#     alongside this file. The override layers per-service env_file:
+#     entries onto the base and adds `ports:` per service so each is
+#     reachable at http://localhost:<port>. There is no local Traefik;
+#     the labels below are metadata only when run locally.
 
 networks:
   dokploy-network:
@@ -29,6 +22,15 @@ networks:
 
 services:
   astarte:
+    depends_on:
+      postgres:
+        condition: service_healthy
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: '5432'
     image: ghcr.io/${GHCR_OWNER}/astarte:${ASTARTE_IMAGE_TAG}
     labels:
       traefik.enable: 'true'
@@ -96,3 +98,35 @@ services:
     networks:
       - dokploy-network
     restart: unless-stopped
+
+  # Internal-only Postgres. Custom image (timescale/timescaledb + the
+  # reconcile wrapper baked in; see postgres/Dockerfile). No Traefik
+  # labels: not reachable from outside dokploy-network. Named volume
+  # keeps PGDATA across redeploys.
+  #
+  # The image's entrypoint runs postgres/scripts/reconcile-roles.sql
+  # on every start after pg_isready. That script is the single source
+  # of truth for all non-superuser roles (astarte, iris_ro, future
+  # tenants). Superuser credentials enter only via env_file and never
+  # leave this container.
+  postgres:
+    env_file:
+      - path: .env
+        required: false
+    healthcheck:
+      interval: 10s
+      retries: 10
+      start_period: 30s
+      test:
+        - CMD-SHELL
+        - pg_isready -U "$$POSTGRES_USER" -d "$$POSTGRES_DB" && psql -U "$$POSTGRES_USER" -d "$$POSTGRES_DB" -tAc "SELECT 1 FROM pg_roles WHERE rolname='astarte'" | grep -q 1
+      timeout: 5s
+    image: ghcr.io/${GHCR_OWNER}/timescale-bootstrapped:${TIMESCALE_BOOTSTRAPPED_IMAGE_TAG}
+    networks:
+      - dokploy-network
+    restart: unless-stopped
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+
+volumes:
+  postgres-data:

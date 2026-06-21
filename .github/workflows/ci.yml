@@ -1,6 +1,7 @@
 # Single CI orchestrator. One run per push/PR builds only the changed services
-# (reusable _astarte/_iris workflows), then the deploy jobs `needs` all service
-# jobs -- so a master push deploys exactly once, after every build finishes.
+# (reusable _astarte/_iris/_timescale_bootstrapped workflows), then the deploy
+# jobs `needs` all service jobs -- so a master push deploys exactly once, after
+# every build finishes.
 
 # PRs coalesce per-branch (cancel-in-progress). master/dispatch share one
 # non-cancellable group; the TF op also serializes on _terraform-apply's lock.
@@ -28,6 +29,7 @@ jobs:
       astarte: ${{ steps.filter.outputs.astarte || 'false' }}
       infra: ${{ steps.filter.outputs.infra || 'false' }}
       iris: ${{ steps.filter.outputs.iris || 'false' }}
+      timescale_bootstrapped: ${{ steps.filter.outputs.timescale_bootstrapped || 'false' }}
     runs-on: ubuntu-latest
     steps:
       - if: ${{ github.event_name == 'push' }}
@@ -51,12 +53,25 @@ jobs:
             iris:
               - 'iris/**'
               - '.github/workflows/_iris.yml'
+            timescale_bootstrapped:
+              - 'postgres/**'
+              - '.github/workflows/_timescale_bootstrapped.yml'
 
   # Single required status check for branch protection. Always runs so it always
   # reports; fails only if a triggered job actually failed/was cancelled.
   ci-gate:
     if: ${{ always() }}
-    needs: [changes, astarte, iris, collect, prod, dokploy]
+    needs:
+      [
+        changes,
+        astarte,
+        iris,
+        timescale_bootstrapped,
+        collect,
+        prod,
+        dokploy,
+        typegen,
+      ]
     runs-on: ubuntu-latest
     steps:
       - if: ${{ contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') }}
@@ -69,8 +84,8 @@ jobs:
   # Gather every <SVC>_IMAGE_TAG repo Variable into TF_VAR_* lines. needs the
   # service jobs so just-built tags are already recorded when read.
   collect:
-    if: ${{ !cancelled() && !contains(needs.*.result, 'failure') && (github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && (needs.changes.outputs.infra == 'true' || needs.changes.outputs.astarte == 'true' || needs.changes.outputs.iris == 'true')) || (github.event_name == 'pull_request' && needs.changes.outputs.infra == 'true' && github.actor != 'dependabot[bot]')) }}
-    needs: [changes, astarte, iris]
+    if: ${{ !cancelled() && !contains(needs.*.result, 'failure') && (github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && (needs.changes.outputs.infra == 'true' || needs.changes.outputs.astarte == 'true' || needs.changes.outputs.iris == 'true' || needs.changes.outputs.timescale_bootstrapped == 'true')) || (github.event_name == 'pull_request' && needs.changes.outputs.infra == 'true' && github.actor != 'dependabot[bot]')) }}
+    needs: [changes, astarte, iris, timescale_bootstrapped]
     outputs:
       tf_vars: ${{ steps.tags.outputs.tf_vars }}
     runs-on: ubuntu-latest
@@ -79,6 +94,7 @@ jobs:
           ASTARTE_CHANGED: ${{ needs.changes.outputs.astarte }}
           GH_TOKEN: ${{ secrets.CI_PAT }}
           IRIS_CHANGED: ${{ needs.changes.outputs.iris }}
+          TIMESCALE_BOOTSTRAPPED_CHANGED: ${{ needs.changes.outputs.timescale_bootstrapped }}
         id: tags
         name: Collect service image tags
         run: |
@@ -93,6 +109,7 @@ jobs:
             # on push, where it equals the just-recorded variable.
             [ "${ASTARTE_CHANGED}" = "true" ] && echo "TF_VAR_ASTARTE_IMAGE_TAG=${GITHUB_SHA}"
             [ "${IRIS_CHANGED}" = "true" ] && echo "TF_VAR_IRIS_IMAGE_TAG=${GITHUB_SHA}"
+            [ "${TIMESCALE_BOOTSTRAPPED_CHANGED}" = "true" ] && echo "TF_VAR_TIMESCALE_BOOTSTRAPPED_IMAGE_TAG=${GITHUB_SHA}"
             echo "TFVARS_EOF"
           } >> "$GITHUB_OUTPUT"
 
@@ -124,8 +141,8 @@ jobs:
   # Provision/converge the host. Runs after all service builds; skipped (not
   # failed) builds are fine, a failed build blocks the deploy. plan_only on PRs.
   prod:
-    if: ${{ !cancelled() && !contains(needs.*.result, 'failure') && (github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && (needs.changes.outputs.infra == 'true' || needs.changes.outputs.astarte == 'true' || needs.changes.outputs.iris == 'true')) || (github.event_name == 'pull_request' && needs.changes.outputs.infra == 'true' && github.actor != 'dependabot[bot]')) }}
-    needs: [changes, astarte, iris]
+    if: ${{ !cancelled() && !contains(needs.*.result, 'failure') && (github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && (needs.changes.outputs.infra == 'true' || needs.changes.outputs.astarte == 'true' || needs.changes.outputs.iris == 'true' || needs.changes.outputs.timescale_bootstrapped == 'true')) || (github.event_name == 'pull_request' && needs.changes.outputs.infra == 'true' && github.actor != 'dependabot[bot]')) }}
+    needs: [changes, astarte, iris, timescale_bootstrapped]
     secrets: inherit
     uses: ./.github/workflows/_terraform-apply.yml
     with:
@@ -133,6 +150,108 @@ jobs:
       plan_only: ${{ github.event_name == 'pull_request' }}
       script: production.sh
       working_directory: linode/environments/production
+
+  timescale_bootstrapped:
+    if: ${{ needs.changes.outputs.timescale_bootstrapped == 'true' }}
+    needs: changes
+    secrets: inherit
+    uses: ./.github/workflows/_timescale_bootstrapped.yml
+    with:
+      push_image: ${{ github.event_name != 'pull_request' }}
+
+  # Regenerates iris/app/generated/{api.d.ts,schema,relations}.ts and
+  # astarte/openapi.json, then fails on `git diff --exit-code`. See
+  # astarte/README.md and iris/README.md for the generators and fix-up steps.
+  #
+  # The postgres service container is the vanilla timescale image (not the
+  # repo's timescale-bootstrapped image — that may be building in the same CI
+  # run, and the service-containers feature can't depend on jobs). The
+  # reconcile-roles step below substitutes for the entrypoint wrapper, applying
+  # the same SQL against the vanilla container so astarte and drizzle-kit see
+  # a properly provisioned DB.
+  typegen:
+    env:
+      POSTGRES_ASTARTE_PASSWORD: ci-astarte
+      POSTGRES_ASTARTE_USER: astarte
+      POSTGRES_DB: app
+      POSTGRES_HOST: localhost
+      POSTGRES_IRIS_RO_PASSWORD: ci-iris-ro
+      POSTGRES_PASSWORD: ci-superuser
+      POSTGRES_PORT: '5432'
+      POSTGRES_USER: ci_root
+    if: ${{ needs.changes.outputs.astarte == 'true' || needs.changes.outputs.iris == 'true' || needs.changes.outputs.timescale_bootstrapped == 'true' }}
+    needs: changes
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        env:
+          POSTGRES_DB: app
+          POSTGRES_PASSWORD: ci-superuser
+          POSTGRES_USER: ci_root
+        image: timescale/timescaledb:latest-pg17
+        options: >-
+          --health-cmd "pg_isready -U ci_root -d app"
+          --health-interval 5s
+          --health-retries 10
+          --health-timeout 3s
+        ports:
+          - 5432:5432
+    steps:
+      - uses: actions/checkout@v6
+
+      - env:
+          PGPASSWORD: ci-superuser
+        name: Apply reconcile-roles.sql against the service container
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq postgresql-client
+          psql --host=localhost --username=ci_root --dbname=app \
+            --set=ON_ERROR_STOP=1 \
+            --set=astarte_password="ci-astarte" \
+            --set=iris_ro_password="ci-iris-ro" \
+            --file=postgres/scripts/reconcile-roles.sql
+
+      - uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+
+      - name: Install astarte deps
+        run: uv sync --frozen
+        working-directory: astarte
+
+      - name: Migrate astarte DB
+        run: uv run python scripts/migrate.py
+        working-directory: astarte
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          package_json_file: iris/package.json
+
+      - uses: actions/setup-node@v6
+        with:
+          cache: pnpm
+          cache-dependency-path: iris/pnpm-lock.yaml
+          node-version: 24
+
+      - name: Install iris deps
+        run: pnpm install --frozen-lockfile
+        working-directory: iris
+
+      - env:
+          DATABASE_URL: postgresql://iris_ro:ci-iris-ro@localhost:5432/app
+        name: Regenerate iris/app/generated/{schema,relations}.ts
+        run: pnpm typegen:db
+        working-directory: iris
+
+      - name: Fail if drizzle artifacts drift from committed copies
+        run: |
+          if ! git diff --exit-code -- \
+              iris/app/generated/schema.ts \
+              iris/app/generated/relations.ts; then
+            echo "::error::iris drizzle artifacts differ from committed copies."
+            echo "::error::Run \`pnpm -C iris typegen:db\` against a migrated astarte DB and commit."
+            exit 1
+          fi
 
 name: ci
 
