@@ -119,8 +119,8 @@ jobs:
   # success() gate would wrongly skip this whenever prod's terminal apply job is
   # skipped (every PR under plan_only, and any no-op apply on push).
   dokploy:
-    if: ${{ !cancelled() && !contains(needs.*.result, 'failure') && needs.collect.result == 'success' }}
-    needs: [collect, prod]
+    if: ${{ !cancelled() && !contains(needs.*.result, 'failure') && needs.collect.result == 'success' && needs.typegen.result == 'success' }}
+    needs: [collect, prod, typegen]
     secrets: inherit
     uses: ./.github/workflows/_terraform-apply.yml
     with:
@@ -141,8 +141,8 @@ jobs:
   # Provision/converge the host. Runs after all service builds; skipped (not
   # failed) builds are fine, a failed build blocks the deploy. plan_only on PRs.
   prod:
-    if: ${{ !cancelled() && !contains(needs.*.result, 'failure') && (github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && (needs.changes.outputs.infra == 'true' || needs.changes.outputs.astarte == 'true' || needs.changes.outputs.iris == 'true' || needs.changes.outputs.timescale_bootstrapped == 'true')) || (github.event_name == 'pull_request' && needs.changes.outputs.infra == 'true' && github.actor != 'dependabot[bot]')) }}
-    needs: [changes, astarte, iris, timescale_bootstrapped]
+    if: ${{ !cancelled() && !contains(needs.*.result, 'failure') && needs.typegen.result == 'success' && (github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && (needs.changes.outputs.infra == 'true' || needs.changes.outputs.astarte == 'true' || needs.changes.outputs.iris == 'true' || needs.changes.outputs.timescale_bootstrapped == 'true')) || (github.event_name == 'pull_request' && needs.changes.outputs.infra == 'true' && github.actor != 'dependabot[bot]')) }}
+    needs: [changes, astarte, iris, timescale_bootstrapped, typegen]
     secrets: inherit
     uses: ./.github/workflows/_terraform-apply.yml
     with:
