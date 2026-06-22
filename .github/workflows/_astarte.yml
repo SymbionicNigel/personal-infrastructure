@@ -39,7 +39,9 @@ jobs:
       # The repo is Apache-2.0; copyleft (GPL/AGPL) and source-available
       # (SSPL/BUSL) deps would create distribution conflicts.
       # List carries both classifier and SPDX spellings (e.g. "MIT
-      # License" and "MIT") plus compound SPDX exprs ("X OR Y").
+      # License" and "MIT") plus compound SPDX exprs (`X OR Y` for
+      # dual-licensed, `X AND Y` for combined-terms packages like
+      # greenlet's `MIT AND PSF-2.0`).
       - name: license audit
         run: >
           uv run pip-licenses --allow-only='Apache Software
@@ -48,7 +50,7 @@ jobs:
           (ISCL);ISC;MIT License;MIT;Mozilla Public License 2.0 (MPL
           2.0);MPL-2.0;Python Software Foundation
           License;PSF-2.0;The Unlicense (Unlicense);Unlicense;Apache-2.0
-          OR BSD-2-Clause'
+          OR BSD-2-Clause;MIT AND PSF-2.0;PSF-2.0 AND MIT'
 
 name: _astarte
 

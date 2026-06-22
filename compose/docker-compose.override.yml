@@ -3,9 +3,13 @@
 # because Terraform inlines docker-compose.yml via templatefile() and
 # passes raw content to Dokploy.
 #
+# Env wiring contract: docs/guides/env-wiring.md.
+#
 # Responsibilities:
 #   - Expose each service on a host port so localhost works without
 #     a reverse proxy.
+#   - Layer per-service env_file: entries onto the base. Compose
+#     merges env_file lists additively between base and override.
 #   - Flip dokploy-network to non-external so Compose creates it
 #     locally (in prod, Dokploy creates it before stack deploy).
 #
@@ -15,6 +19,9 @@
 #   - Source-built services (e.g. astarte): add `build` (with the
 #     Dockerfile's dev target), a local `image:` tag, `ports:`, and a
 #     `volumes:` source bind mount for live reload.
+#   - Services with env: add an `env_file:` block pointing at the
+#     chezmoi-rendered `.env.<service>` (and any aggregated `.scope`
+#     files the service owns).
 
 networks:
   dokploy-network:
@@ -26,14 +33,19 @@ services:
     build:
       context: ../astarte
       target: dev
+    env_file:
+      - path: .env.astarte
+        required: true
     image: astarte:dev
     ports:
       - '8000:8000'
     volumes:
       # Host source bind-mounted over the editable install path so
       # `uvicorn --reload` (set as the dev CMD) picks up edits without
-      # rebuilding the image.
+      # rebuilding the image. `alembic/` is mounted too so migration
+      # iteration (new revisions, env.py edits) doesn't need a rebuild.
       - ../astarte/src:/app/src
+      - ../astarte/alembic:/app/alembic
 
   iris:
     build:
@@ -55,3 +67,17 @@ services:
   janus:
     ports:
       - '8080:80'
+
+  postgres:
+    build:
+      context: ../postgres
+    env_file:
+      - path: .env.postgres
+        required: true
+      - path: .env.postgres.roles
+        required: true
+    image: timescale-bootstrapped:dev
+    # Bound to loopback so the dev DB isn't reachable from the operator's LAN.
+    # drizzle-kit typegen connects via localhost:5432.
+    ports:
+      - '127.0.0.1:5432:5432'

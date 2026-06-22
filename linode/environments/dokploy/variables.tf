@@ -19,6 +19,13 @@ variable "IRIS_IMAGE_TAG" {
   default     = "latest"
 }
 
+variable "TIMESCALE_BOOTSTRAPPED_IMAGE_TAG" {
+  type        = string
+  nullable    = false
+  description = "Image tag (git SHA in CI, 'latest' for manual applies) for the timescale-bootstrapped image on GHCR (timescale base + reconcile-roles wrapper)."
+  default     = "latest"
+}
+
 variable "GHCR_OWNER" {
   type        = string
   nullable    = false

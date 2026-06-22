@@ -1,7 +1,14 @@
 {
   "$schema": "https://biomejs.dev/schemas/2.5.0/schema.json",
   "files": {
-    "includes": ["**", "!node_modules", "!styled-system", "!build", "!.react-router"]
+    "includes": [
+      "**",
+      "!node_modules",
+      "!styled-system",
+      "!build",
+      "!.react-router",
+      "!app/generated"
+    ]
   },
   "formatter": {
     "enabled": true,

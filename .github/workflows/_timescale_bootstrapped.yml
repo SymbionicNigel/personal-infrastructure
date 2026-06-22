@@ -1,0 +1,33 @@
+# Reusable timescale-bootstrapped CI: build+push the timescaledb-based image
+# with reconcile-roles.sql + the entrypoint wrapper baked in.
+# No test step — the image is a thin wrapper over timescale/timescaledb;
+# behavior is exercised by the typegen job's actual psql run against the
+# service container.
+concurrency:
+  cancel-in-progress: false
+  group: timescale-bootstrapped-${{ github.ref }}
+
+jobs:
+  build-and-push:
+    secrets: inherit
+    uses: ./.github/workflows/_build-push.yml
+    with:
+      context: postgres
+      image_name: timescale-bootstrapped
+      push_image: ${{ inputs.push_image }}
+      service: timescale_bootstrapped
+
+name: _timescale_bootstrapped
+
+on:
+  workflow_call:
+    inputs:
+      push_image:
+        default: false
+        description: Push to GHCR + record TIMESCALE_BOOTSTRAPPED_IMAGE_TAG. False = build-only validation (PRs).
+        required: false
+        type: boolean
+
+permissions:
+  contents: read
+  packages: write

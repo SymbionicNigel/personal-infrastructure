@@ -25,6 +25,21 @@ served at `iris.<HOSTNAME_TLD>` in prod and `localhost:3000` in dev. The apex +
 | `pnpm lint` / `pnpm format` | Biome check / write |
 | `pnpm test` | Vitest run |
 | `pnpm fonts:sync` | Re-download the self-hosted fonts |
+| `pnpm typegen:api` | Regenerate `app/generated/api.d.ts` from `../astarte/openapi.json` |
+| `pnpm typegen:db` | `drizzle-kit pull` against `$DATABASE_URL` → `app/generated/{schema,relations}.ts` |
+
+## Generated types
+
+`app/generated/` is committed and verified by CI's `typegen` job:
+
+- `api.d.ts` — `openapi-typescript` over `astarte/openapi.json`. Regenerate after
+  any astarte route/model change (see `astarte/README.md`).
+- `schema.ts` / `relations.ts` — `drizzle-kit pull` against a Postgres that has
+  astarte's alembic migrations applied. Regenerate after any astarte migration.
+  `typegen:db` needs `$DATABASE_URL`; locally point it at the compose Postgres.
+
+CI fails on `git diff --exit-code` against these files; rerun the matching
+script and commit.
 
 ## Docker
 
