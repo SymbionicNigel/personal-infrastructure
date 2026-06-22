@@ -7,7 +7,7 @@
 #     linode/environments/dokploy/main.tf. Terraform inlines this file
 #     via templatefile() and pushes the per-service env maps to
 #     Dokploy's compose-scoped environment, where compose's standard
-#     ${VAR} substitution resolves them at deploy time.
+#     $${VAR} substitution resolves them at deploy time.
 #
 #   Local: `docker compose up` auto-loads docker-compose.override.yml
 #     alongside this file. The override layers per-service env_file:
@@ -50,7 +50,7 @@ services:
   # single-level subdomains 302 to iris.<tld>/404 via a low-priority catch-all
   # (real routers always win on their higher rule priority). `$$` escapes a
   # literal `$` so it survives both templatefile() and compose; `$${1}` yields
-  # the Traefik backreference `${1}`. The catch-all's TLS needs a wildcard cert
+  # the Traefik backreference `$${1}`. The catch-all's TLS needs a wildcard cert
   # (*.<tld>) — verify the letsencrypt resolver does DNS-01.
   iris:
     image: ghcr.io/${GHCR_OWNER}/iris:${IRIS_IMAGE_TAG}
