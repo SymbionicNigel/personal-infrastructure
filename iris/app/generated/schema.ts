@@ -5,5 +5,5 @@ export const astarte = pgSchema("astarte");
 
 
 export const alembicVersionInAstarte = astarte.table("alembic_version", {
-	versionNum: varchar("version_num", { length: 32 }).primaryKey().notNull(),
+	versionNum: varchar("version_num", { length: 32 }).notNull(),
 });

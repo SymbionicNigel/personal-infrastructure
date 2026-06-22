@@ -3,12 +3,18 @@
 -- block is idempotent (CREATE-if-absent + ALTER to sync), so reruns are
 -- safe and the script is the single source of truth for role state.
 --
+-- Pattern: a DO block creates the role at-most-once (suppressing
+-- duplicate_object); a following ALTER ROLE always syncs attributes +
+-- password. The password lives in an ALTER (not the CREATE) so it can
+-- use psql's :'name' substitution -- which does NOT happen inside
+-- dollar-quoted strings, so the create path can't reference it.
+--
 -- Adding a role:
 --   1. Add a POSTGRES_<NAME>_PASSWORD entry to
 --      .secrets/.chezmoitemplates/postgres-roles-env.
 --   2. Add a `--set=<name>_password="${POSTGRES_<NAME>_PASSWORD}"`
 --      binding to entrypoint.sh.
---   3. Add a DO $$ ... END $$ block below referencing :'<name>_password'.
+--   3. Add a create-then-alter pair below referencing :'<name>_password'.
 --
 -- Roles owned here:
 --   astarte  Owns the `astarte` schema (convention: each service that
@@ -24,34 +30,24 @@
 -- ON_ERROR_STOP is set by the invoking script (entrypoint.sh passes
 -- --set=ON_ERROR_STOP=1), so any error here aborts the entire pass.
 
--- astarte role: create-if-absent, then sync password + attributes.
-DO $$
-BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'astarte') THEN
-    EXECUTE format('CREATE ROLE astarte WITH LOGIN CREATEROLE PASSWORD %L', :'astarte_password');
-    RAISE NOTICE 'created role astarte';
-  ELSE
-    EXECUTE format('ALTER ROLE astarte WITH LOGIN CREATEROLE PASSWORD %L', :'astarte_password');
-  END IF;
-END
-$$;
+-- astarte role
+DO $$ BEGIN
+  CREATE ROLE astarte WITH LOGIN CREATEROLE;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+ALTER ROLE astarte WITH LOGIN CREATEROLE PASSWORD :'astarte_password';
 
 -- astarte schema: owned by astarte so Alembic migrations create tables
 -- under an owner astarte can manage. Created here (not by astarte) so
 -- iris_ro grants below have something to attach to on a fresh DB.
 CREATE SCHEMA IF NOT EXISTS astarte AUTHORIZATION astarte;
 
--- iris_ro role: create-if-absent, then sync password.
-DO $$
-BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'iris_ro') THEN
-    EXECUTE format('CREATE ROLE iris_ro WITH LOGIN PASSWORD %L', :'iris_ro_password');
-    RAISE NOTICE 'created role iris_ro';
-  ELSE
-    EXECUTE format('ALTER ROLE iris_ro WITH LOGIN PASSWORD %L', :'iris_ro_password');
-  END IF;
-END
-$$;
+-- iris_ro role
+DO $$ BEGIN
+  CREATE ROLE iris_ro WITH LOGIN;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+ALTER ROLE iris_ro WITH LOGIN PASSWORD :'iris_ro_password';
 
 -- iris_ro grants on the astarte schema. USAGE + SELECT on existing tables
 -- handles tables astarte has already created; ALTER DEFAULT PRIVILEGES
