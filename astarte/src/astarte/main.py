@@ -6,7 +6,6 @@ import asyncio
 import logging
 import sys
 from contextlib import asynccontextmanager
-from pathlib import Path
 from typing import TYPE_CHECKING, Annotated
 
 from fastapi import Depends, FastAPI
@@ -22,7 +21,11 @@ if TYPE_CHECKING:
 
 log = logging.getLogger(__name__)
 
-_ASTARTE_ROOT = Path(__file__).resolve().parent.parent.parent
+# alembic.ini + alembic/ live at /app in both Dockerfile targets (dev's
+# WORKDIR + bind mount, runtime's WORKDIR + COPY). NOT next to the
+# installed astarte package in the runtime image, so we can't derive
+# this from `__file__`.
+_ALEMBIC_CWD = "/app"
 
 
 async def _alembic_upgrade_head() -> None:
@@ -39,7 +42,7 @@ async def _alembic_upgrade_head() -> None:
         "alembic",
         "upgrade",
         "head",
-        cwd=str(_ASTARTE_ROOT),
+        cwd=_ALEMBIC_CWD,
     )
     rc = await proc.wait()
     if rc != 0:
