@@ -23,10 +23,10 @@
     "@ark-ui/react": "^5.37.2",
     "@react-router/node": "7.17.0",
     "@react-router/serve": "7.17.0",
-    "i18next": "^26.3.1",
+    "i18next": "^26.3.4",
     "i18next-browser-languagedetector": "^8.2.1",
-    "isbot": "^5.1.43",
-    "lucide-react": "^1.18.0",
+    "isbot": "^5.1.44",
+    "lucide-react": "^1.22.0",
     "react": "^19.2.6",
     "react-dom": "^19.2.6",
     "react-i18next": "^17.0.8",
@@ -34,8 +34,8 @@
     "remix-i18next": "^7.5.0"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.5.0",
-    "@pandacss/dev": "^1.11.3",
+    "@biomejs/biome": "^2.5.1",
+    "@pandacss/dev": "^1.11.4",
     "@park-ui/panda-preset": "^0.43.1",
     "@react-router/dev": "7.17.0",
     "@testing-library/jest-dom": "^6.9.1",
@@ -45,15 +45,15 @@
     "@types/pg": "^8.20.0",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
-    "@vitejs/plugin-react": "^6.0.2",
+    "@vitejs/plugin-react": "^6.0.3",
     "dotenv": "^16.4.5",
     "drizzle-kit": "^0.31.10",
     "drizzle-orm": "^0.45.2",
     "jsdom": "^29.1.1",
     "openapi-typescript": "^7.13.0",
-    "pg": "^8.21.0",
+    "pg": "^8.22.0",
     "typescript": "^6.0.3",
-    "vite": "^8.0.3",
+    "vite": "^8.1.1",
     "vitest": "^4.1.9"
   }
 }
