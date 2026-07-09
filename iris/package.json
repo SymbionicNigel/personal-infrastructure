@@ -22,7 +22,7 @@
   "dependencies": {
     "@ark-ui/react": "^5.37.2",
     "@react-router/node": "8.1.0",
-    "@react-router/serve": "8.1.0",
+    "@react-router/serve": "8.2.0",
     "i18next": "^26.3.1",
     "i18next-browser-languagedetector": "^8.2.1",
     "isbot": "^5.1.43",
