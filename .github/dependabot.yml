@@ -58,8 +58,9 @@ updates:
 
   # Terraform provider/module constraints in each environment + the modules.
   - directories:
-      - /linode/environments/production
+      - /linode/environments/bootstrap
       - /linode/environments/dokploy
+      - /linode/environments/production
       - /linode/modules/*
     groups:
       terraform:
