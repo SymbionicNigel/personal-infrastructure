@@ -1,0 +1,30 @@
+{
+  "tagOwners": {
+    "tag:mc-cloud":   ["autogroup:admin"],
+    "tag:mc-compute": ["autogroup:admin"],
+    "tag:mc-gateway": ["autogroup:admin"],
+  },
+  "grants": [
+    // Preserve existing tailnet connectivity. Tighten later by removing this.
+    { "src": ["autogroup:member"], "dst": ["*"], "ip": ["*"] },
+    // Cloud host -> compute: Wings API, SFTP, and the (Java/TCP) game-port range.
+    {
+      "src": ["tag:mc-cloud"],
+      "dst": ["tag:mc-compute"],
+      "ip": ["tcp:8080", "tcp:2022", "tcp:${game_port_range}"],
+    },
+  ],
+  "ssh": [
+    {
+      "action": "accept",
+      "src": ["autogroup:admin"],
+      "dst": ["tag:mc-cloud", "tag:mc-compute", "tag:mc-gateway"],
+      "users": ["autogroup:nonroot", "root"],
+    },
+  ],
+  "autoApprovers": {
+    "routes": {
+      "${home_lan_cidr}": ["tag:mc-gateway"],
+    },
+  },
+}

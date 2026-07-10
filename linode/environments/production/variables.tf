@@ -64,3 +64,23 @@ variable "DEPLOY_USER" {
   default     = "deploy"
   description = "Non-root sudoer created by cloud-init and used for SSH-tunneled Dokploy admin calls. Threaded into every module that SSHes back into the host."
 }
+
+variable "TAILSCALE_OAUTH_CLIENT_ID" {
+  type        = string
+  sensitive   = true
+  nullable    = false
+  description = "Tailscale OAuth client ID (scopes: auth keys, dns, policy file, devices)"
+}
+
+variable "TAILSCALE_OAUTH_CLIENT_SECRET" {
+  type        = string
+  sensitive   = true
+  nullable    = false
+  description = "Tailscale OAuth client secret"
+}
+
+variable "HOME_LAN_CIDR" {
+  type        = string
+  nullable    = false
+  description = "Home LAN CIDR advertised by the Pi subnet router"
+}
