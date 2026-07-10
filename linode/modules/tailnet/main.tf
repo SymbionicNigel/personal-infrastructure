@@ -12,6 +12,10 @@ resource "tailscale_acl" "policy" {
     home_lan_cidr   = var.home_lan_cidr
     game_port_range = var.game_port_range
   })
+  # The tailnet's starter policy (and the throwaway tagOwners declared by hand
+  # to seed the OAuth client's tag picker) count as "non-default"; this module
+  # is the source of truth, so replace whatever is there.
+  overwrite_existing_content = true
 }
 
 resource "tailscale_dns_preferences" "magicdns" {
@@ -23,7 +27,7 @@ resource "tailscale_tailnet_key" "cloud" {
   ephemeral     = false
   preauthorized = true
   expiry        = var.key_expiry_seconds
-  description   = "mc-cloud (Linode host)"
+  description   = "mc-cloud Linode host"
   tags          = ["tag:mc-cloud"]
 }
 
@@ -32,7 +36,7 @@ resource "tailscale_tailnet_key" "compute" {
   ephemeral     = false
   preauthorized = true
   expiry        = var.key_expiry_seconds
-  description   = "mc-compute (i7 Wings node)"
+  description   = "mc-compute i7 Wings node"
   tags          = ["tag:mc-compute"]
 }
 
@@ -41,6 +45,6 @@ resource "tailscale_tailnet_key" "gateway" {
   ephemeral     = false
   preauthorized = true
   expiry        = var.key_expiry_seconds
-  description   = "mc-gateway (Pi subnet router)"
+  description   = "mc-gateway Pi subnet router"
   tags          = ["tag:mc-gateway"]
 }
