@@ -46,3 +46,4 @@ linode/environments/production/dokploy.sshconfig
 .dokploy-api-key
 homelab/homelab_ed25519
 homelab/authorized_keys
+homelab/*.sshconfig

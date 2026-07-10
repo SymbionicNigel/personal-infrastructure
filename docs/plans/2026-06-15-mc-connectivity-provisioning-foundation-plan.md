@@ -26,6 +26,14 @@ Ansible, GitHub Actions, chezmoi/GPG secrets.
 [2026-06-14-minecraft-management-architecture-design.md](./2026-06-14-minecraft-management-architecture-design.md)
 (sub-project 1). The brainstorming conversation is the spec.
 
+**Phase 0 sibling:**
+[2026-07-09-mc-phase-0-flashing-plan.md](./2026-07-09-mc-phase-0-flashing-plan.md).
+Phase 0 pulls Tasks 1–5 of this plan forward (the tailnet Terraform must land
+first so it can bake auth keys into the Pi's first-boot payload), then flashes
+both home boxes onto the tailnet. As a result the hardware-touch steps in
+Tasks 6, 10 Step 3, and 11 Step 4 are handled by Phase 0 — see the per-task
+notes below.
+
 **Convergence happens inline:** the tailnet + cloud host go live in Task 5; the
 i7 and Pi are bootstrapped and converged in Task 10/11 as you bring them up; the
 `wings` role's live converge is the one genuine cross-project wait — it needs the
@@ -458,6 +466,12 @@ Expected: the Linode host listed with `tag:mc-cloud`. MagicDNS resolves its name
 
 ## Task 6: `bootstrap.sh` (flash-drive one-touch)
 
+> **Superseded for the current hardware by Phase 0.** The ThinkCentre and Pi
+> were joined to the tailnet directly by
+> [2026-07-09-mc-phase-0-flashing-plan.md](./2026-07-09-mc-phase-0-flashing-plan.md)
+> (Tasks A and B). This wrapper is kept only for hypothetical future LAN-only
+> boxes that would be flashed without embedding the auth key in first-boot media.
+
 Minimal: joins a fresh box to the tailnet via the shared script. Docker/Wings
 are the Ansible roles' job.
 
@@ -760,7 +774,9 @@ converges its base roles.
 Run: `cd homelab/ansible && ansible-lint roles/docker`
 Expected: PASS.
 
-- [ ] **Step 3: Bootstrap the i7 (hardware)**
+- [ ] **Step 3: Bootstrap the i7 (hardware)** — *handled by Phase 0 Task A. Skip
+if that plan has been executed; the ThinkCentre is already on the tailnet as
+`tag:mc-compute`. Original instructions preserved below for future rebuilds.*
 
 Flash Ubuntu LTS on the i7, create the `deploy` user, then from the box:
 `sudo bash scripts/bootstrap.sh --authkey <compute_auth_key> --advertise-tags tag:mc-compute`
@@ -832,7 +848,10 @@ subnet_router_cidr: ""
 Run: `cd homelab/ansible && ansible-lint roles/subnet-router`
 Expected: PASS.
 
-- [ ] **Step 4: Bootstrap the Pi (hardware) and converge**
+- [ ] **Step 4: Bootstrap the Pi (hardware) and converge** — *the bootstrap
+portion is handled by Phase 0 Task B; skip the `bootstrap.sh` invocation and
+jump straight to setting the MagicDNS name in the inventory and running the
+Ansible converge. Original instructions preserved below for future rebuilds.*
 
 On the Pi: `sudo bash scripts/bootstrap.sh --authkey <gateway_auth_key> --advertise-tags tag:mc-gateway`,
 set its MagicDNS name in the inventory, then:
