@@ -47,3 +47,4 @@ linode/environments/production/dokploy.sshconfig
 homelab/homelab_ed25519
 homelab/authorized_keys
 homelab/*.sshconfig
+mc-compute-autoinstall.iso

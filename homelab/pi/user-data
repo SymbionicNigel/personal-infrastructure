@@ -1,0 +1,18 @@
+#cloud-config
+# mc-gateway (tag:mc-gateway) cloud-init. Written onto the Ubuntu Pi image's
+# FAT32 system-boot partition by homelab/scripts/stage-pi-sd.sh, replacing the
+# image's default user-data. Raspberry Pi Imager can't customize a custom
+# image, so hostname / user / SSH key are configured here instead. The
+# @@AUTHORIZED_KEYS@@ marker is expanded into a YAML list by the stage script.
+hostname: mc-gateway
+manage_etc_hosts: true
+runcmd:
+  - bash /boot/firmware/pi-firstrun.sh
+ssh_pwauth: false
+users:
+  - groups: [adm, sudo]
+    name: deploy
+    shell: /bin/bash
+    ssh_authorized_keys:
+@@AUTHORIZED_KEYS@@
+    sudo: "ALL=(ALL) NOPASSWD:ALL"

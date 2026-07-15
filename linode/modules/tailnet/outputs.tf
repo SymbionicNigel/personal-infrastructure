@@ -1,7 +1,7 @@
 output "cloud_auth_key" {
   value       = tailscale_tailnet_key.cloud.key
   sensitive   = true
-  description = "Auth key for the Linode host (tag:mc-cloud)"
+  description = "Auth key for the Linode host (tag:dokploy)"
 }
 
 output "compute_auth_key" {

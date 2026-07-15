@@ -1,15 +1,21 @@
 {
   "tagOwners": {
-    "tag:mc-cloud":   ["autogroup:admin"],
-    "tag:mc-compute": ["autogroup:admin"],
-    "tag:mc-gateway": ["autogroup:admin"],
+    // tag:infra-owner is the OAuth client's single approved tag. Terraform's
+    // OAuth client rejects minting a single-tag key when it holds 2+ tags
+    // (terraform-provider-tailscale#437), so the client presents only this
+    // one owner tag, which in turn owns the three device tags below.
+    // infra-owner is never applied to a device — it exists purely for ownership.
+    "tag:infra-owner": ["autogroup:admin"],
+    "tag:dokploy":     ["tag:infra-owner"],
+    "tag:mc-compute":  ["tag:infra-owner"],
+    "tag:mc-gateway":  ["tag:infra-owner"],
   },
   "grants": [
     // Preserve existing tailnet connectivity. Tighten later by removing this.
     { "src": ["autogroup:member"], "dst": ["*"], "ip": ["*"] },
     // Cloud host -> compute: Wings API, SFTP, and the (Java/TCP) game-port range.
     {
-      "src": ["tag:mc-cloud"],
+      "src": ["tag:dokploy"],
       "dst": ["tag:mc-compute"],
       "ip": ["tcp:8080", "tcp:2022", "tcp:${game_port_range}"],
     },
@@ -18,7 +24,7 @@
     {
       "action": "accept",
       "src": ["autogroup:admin"],
-      "dst": ["tag:mc-cloud", "tag:mc-compute", "tag:mc-gateway"],
+      "dst": ["tag:dokploy", "tag:mc-compute", "tag:mc-gateway"],
       "users": ["autogroup:nonroot", "root"],
     },
   ],

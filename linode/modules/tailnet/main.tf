@@ -23,15 +23,19 @@ resource "tailscale_dns_preferences" "magicdns" {
 }
 
 resource "tailscale_tailnet_key" "cloud" {
+  # Keys carry tags, which must be declared in tagOwners first. Without this,
+  # a same-apply create can race the policy write and 400 on "invalid tags".
+  depends_on    = [tailscale_acl.policy]
   reusable      = true
   ephemeral     = false
   preauthorized = true
   expiry        = var.key_expiry_seconds
-  description   = "mc-cloud Linode host"
-  tags          = ["tag:mc-cloud"]
+  description   = "dokploy Linode host"
+  tags          = ["tag:dokploy"]
 }
 
 resource "tailscale_tailnet_key" "compute" {
+  depends_on    = [tailscale_acl.policy]
   reusable      = true
   ephemeral     = false
   preauthorized = true
@@ -41,6 +45,7 @@ resource "tailscale_tailnet_key" "compute" {
 }
 
 resource "tailscale_tailnet_key" "gateway" {
+  depends_on    = [tailscale_acl.policy]
   reusable      = true
   ephemeral     = false
   preauthorized = true

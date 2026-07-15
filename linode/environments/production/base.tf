@@ -188,7 +188,7 @@ module "tailnet" {
   home_lan_cidr = var.HOME_LAN_CIDR
 }
 
-# Join the Linode host to the tailnet as tag:mc-cloud. Mirrors ghcr_login:
+# Join the Linode host to the tailnet as tag:dokploy. Mirrors ghcr_login:
 # ships the shared install-tailscale.sh, runs it, rm's the key in the same step.
 # Triggers on host IP + key hash, so rebuilds/rotation re-converge hands-off.
 # --ssh enables Tailscale SSH so later Ansible push reaches home boxes through
@@ -220,7 +220,7 @@ resource "null_resource" "tailscale_join" {
       chmod +x /home/${module.dokploy-instance.deploy_user}/install-tailscale.sh
       sudo /home/${module.dokploy-instance.deploy_user}/install-tailscale.sh \
         --authkey '${module.tailnet.cloud_auth_key}' \
-        --advertise-tags tag:mc-cloud \
+        --advertise-tags tag:dokploy \
         --ssh
       rm -f /home/${module.dokploy-instance.deploy_user}/install-tailscale.sh
       EOT

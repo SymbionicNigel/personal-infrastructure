@@ -1,0 +1,13 @@
+[Unit]
+Description=One-shot tailnet join for mc-compute (self-disabling)
+After=network-online.target
+Wants=network-online.target
+ConditionPathExists=/usr/local/sbin/compute-firstrun.sh
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/compute-firstrun.sh
+RemainAfterExit=no
+
+[Install]
+WantedBy=multi-user.target
