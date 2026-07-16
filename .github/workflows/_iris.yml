@@ -27,7 +27,7 @@ jobs:
         with:
           package_json_file: iris/package.json
 
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7
         with:
           cache: pnpm
           cache-dependency-path: iris/pnpm-lock.yaml
