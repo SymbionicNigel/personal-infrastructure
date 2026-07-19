@@ -57,3 +57,21 @@ Prefer per-directory documentation over guessing — these are kept current:
 | Stage 2 deploy | `cd linode/environments/dokploy && bash dokploy.sh` |
 | SSH to prod host | `ssh dokploy-prod` (after Stage 1 has run on this machine) |
 | Add an encrypted secret | `bash ./dotfile-utils/scripts/chezmoi-add-secret.sh --encrypt <path>` |
+
+## Agent skills
+
+### Issue tracker
+
+Issues and specs live as markdown files under `docs/plans/<feature-slug>/` (overrides the skills' default `.scratch/`). See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+The five canonical role labels, used as-is. The out-of-scope KB lives at `docs/out-of-scope/`. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context — glossary at `docs/CONTEXT.md`, ADRs at `docs/adr/`. See `docs/agents/domain.md`.
+
+### Research notes
+
+`/research` output is saved under `docs/research/<slug>.md`.

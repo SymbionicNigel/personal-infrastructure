@@ -5,7 +5,7 @@ description: "Use when the user adds, edits, lists, or applies chezmoi-managed s
 
 # secrets-sync
 
-All chezmoi commands in this repo require `--config ./.chezmoi.toml` because the config is project-local, not in `~/.config/chezmoi`.
+All chezmoi commands in this repo require `--config ./.chezmoi.toml` because the config is project-local, not in `~/.config/chezmoi`. After sourcing the Bitwarden session (`source ./dotfile-utils/scripts/source_bitwarden_session.sh`), the `czm` alias is available as shorthand for `chezmoi --config ./.chezmoi.toml`.
 
 ## Source-of-Truth Chain
 
