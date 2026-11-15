@@ -22,6 +22,8 @@
 
 set -euo pipefail
 
+rm -f /tmp/reconcile-ready
+
 SCRIPT_DIR="$(dirname "${BASH_SOURCE[0]}")"
 RECONCILE_SQL="${SCRIPT_DIR}/reconcile-roles.sql"
 
@@ -30,6 +32,23 @@ abort_postgres() {
     kill -TERM "${PG_PID}" 2>/dev/null || true
     wait "${PG_PID}" 2>/dev/null || true
   fi
+}
+
+admin_psql() {
+  PGPASSWORD="${POSTGRES_PASSWORD}" psql -X \
+    --host=localhost --username="${POSTGRES_USER}" --set=ON_ERROR_STOP=1 "$@"
+}
+
+upgrade_timescale() {
+  local databases database installed
+  databases=$(admin_psql --dbname="${POSTGRES_DB}" -tAc \
+    'SELECT datname FROM pg_database WHERE datallowconn ORDER BY datname') || return
+  while IFS= read -r database; do
+    installed=$(admin_psql --dbname="$database" -tAc \
+      "SELECT EXISTS (SELECT 1 FROM pg_extension WHERE extname='timescaledb')") || return
+    [ "$installed" = t ] || continue
+    admin_psql --dbname="$database" --command='ALTER EXTENSION timescaledb UPDATE;' || return
+  done <<< "$databases"
 }
 
 # Start the upstream entrypoint in the background so we can run reconcile
@@ -64,12 +83,15 @@ until PGPASSWORD="${POSTGRES_PASSWORD}" pg_isready \
   sleep 1
 done
 
+if ! upgrade_timescale; then
+  echo "reconcile: Timescale extension upgrade failed; aborting container" >&2
+  abort_postgres
+  exit 1
+fi
+
 echo "reconcile: applying roles via reconcile-roles.sql"
-if ! PGPASSWORD="${POSTGRES_PASSWORD}" psql \
-    --host=localhost \
-    --username="${POSTGRES_USER}" \
+if ! admin_psql \
     --dbname="${POSTGRES_DB}" \
-    --set=ON_ERROR_STOP=1 \
     --set=astarte_password="${POSTGRES_ASTARTE_PASSWORD}" \
     --set=iris_ro_password="${POSTGRES_IRIS_RO_PASSWORD}" \
     --file="${RECONCILE_SQL}"; then
@@ -78,6 +100,7 @@ if ! PGPASSWORD="${POSTGRES_PASSWORD}" psql \
   exit 1
 fi
 echo "reconcile: applied successfully"
+touch /tmp/reconcile-ready
 
 # Wait for postgres to exit; the TERM/INT trap above forwards stop signals.
 wait "${PG_PID}"

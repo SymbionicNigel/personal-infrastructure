@@ -87,11 +87,11 @@ services:
     restart: unless-stopped
 
   janus:
-    image: traefik/whoami:latest
+    image: traefik/whoami:v1.12.0@sha256:c4717a8d1f0134a7444e24f881160e033991f23027c6c5a9a3f8fd22e70d1d44
     labels:
       traefik.enable: 'true'
       traefik.http.routers.janus.entrypoints: 'websecure'
-      traefik.http.routers.janus.rule: 'Host(`janus.${HOSTNAME_TLD}`)'
+      traefik.http.routers.janus.rule: 'Host(`janus.${HOSTNAME_TLD}`) && Path(`/`)'
       traefik.http.routers.janus.tls: 'true'
       traefik.http.routers.janus.tls.certresolver: 'letsencrypt'
       traefik.http.services.janus.loadbalancer.server.port: '80'
@@ -119,7 +119,7 @@ services:
       start_period: 30s
       test:
         - CMD-SHELL
-        - pg_isready -U "$$POSTGRES_USER" -d "$$POSTGRES_DB" && psql -U "$$POSTGRES_USER" -d "$$POSTGRES_DB" -tAc "SELECT 1 FROM pg_roles WHERE rolname='astarte'" | grep -q 1
+        - test -f /tmp/reconcile-ready && pg_isready -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"
       timeout: 5s
     image: ghcr.io/${GHCR_OWNER}/timescale-bootstrapped:${TIMESCALE_BOOTSTRAPPED_IMAGE_TAG}
     networks:

@@ -1,8 +1,3 @@
-# Reusable timescale-bootstrapped CI: build+push the timescaledb-based image
-# with reconcile-roles.sql + the entrypoint wrapper baked in.
-# No test step — the image is a thin wrapper over timescale/timescaledb;
-# behavior is exercised by the typegen job's actual psql run against the
-# service container.
 concurrency:
   cancel-in-progress: false
   group: timescale-bootstrapped-${{ github.ref }}

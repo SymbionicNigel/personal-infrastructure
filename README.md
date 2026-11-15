@@ -14,7 +14,7 @@ Hostname conventions used by the stack (each subdomain hangs off the
 configured `HOSTNAME_TLD`):
 
 - astarte - FastAPI backend - Phoenician goddess of beauty
-- iris - React Router v7 web frontend - Greek messenger goddess
+- iris - React Router v8 web frontend - Greek messenger goddess
 - janus - whoami (Roman two-faced god of beginnings, doorways, and transitions)
 - vulcan - dokploy console - Roman god of the forge, craftsmen, and builders
 - IN NEED OF SERVICE:
@@ -33,12 +33,15 @@ Production services run on a single Linode host managed by
 [Dokploy](https://dokploy.com), provisioned end-to-end by the Terraform
 config under [linode/](./linode/README.md). Dokploy's bundled Traefik
 handles routing and TLS; application services are defined in the root
-`docker-compose.yml` and deployed as a `dokploy_compose` stack.
+`compose/docker-compose.yml` and deployed as a `dokploy_compose` stack.
+
+Security validation, update ownership, and host package policy are documented in
+[Security updates](./docs/guides/security-updates.md).
 
 ## Modules
 
 1. [Linode](./linode/README.md) - Terraform based IAC
-2. [Iris](./iris/README.md) - React Router v7 web frontend (Node, pnpm-managed)
+2. [Iris](./iris/README.md) - React Router v8 web frontend (Node, pnpm-managed)
 3. [Astarte](./astarte/README.md) - FastAPI backend (Python, uv-managed)
 
 ## Bootstrap
@@ -47,14 +50,14 @@ Run these two idempotent scripts from the repo root:
 
 ```sh
 ./dotfile-utils/bootstrap.sh   # chezmoi, secrets submodule, dotfiles
-./scripts/initialize.sh        # gh, bw, pnpm + Node 24, uv, service syncs
+./scripts/initialize.sh        # gh, bw, pnpm + Node 26.13.1, uv, service syncs
 ```
 
 Together they install
 [chezmoi](https://www.chezmoi.io/),
 [gh](https://cli.github.com/),
 [Bitwarden CLI](https://bitwarden.com/help/cli/),
-[pnpm](https://pnpm.io/) (managing [Node.js](https://nodejs.org/) 24),
+[pnpm](https://pnpm.io/) (managing [Node.js](https://nodejs.org/) 26.13.1),
 and [uv](https://docs.astral.sh/uv/),
 then `pnpm install` / `uv sync` every service in the repo.
 

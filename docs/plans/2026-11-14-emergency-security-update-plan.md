@@ -88,7 +88,7 @@ Astarte currently locks Mako 1.3.12 through Alembic. Its known vulnerable path i
 2. Recreate PR #63 after the focused AnyIO, certifi, and Mako updates so it does not overwrite the security resolutions.
 3. Refresh PR #62 as the single npm security and routine update. It supersedes PR #46.
 4. Replace stale PR #58 with Vitest 4.1.12 or newer.
-5. Keep PR #59 isolated and require reviewed read-only plans for every Terraform environment.
+5. Review the provider updates against read-only plans for every Terraform environment.
 6. Rerun all checks after rebasing. Existing green checks are stale and do not validate the final combined locks.
 7. Merge nothing until the maintenance window begins.
 
@@ -129,6 +129,29 @@ Linode backups are disabled in Terraform. Before host package changes, choose an
 - Dokploy or Traefik: restore the control-plane and `/etc/dokploy` backup and verify ACME state before reopening traffic.
 
 Every failed health gate stops the sequence. Later services are not deployed until the current component is healthy or rolled back.
+
+## Implementation status
+
+Branch preparation on 2026-11-14, without production access:
+
+- Iris uses digest-pinned Node 26.13.1 with verified Brotli 1.2.1, aligned React Router 8.3.0 packages, compatible remix-i18next 8, pnpm 11.28.9, and Vitest 4.1.12. The refreshed production lock audit reports no known vulnerabilities and needs no dependency overrides.
+- Astarte locks AnyIO 4.14.2, certifi 2026.10.18, and Mako 1.4.2. Python 3.14.9 and uv 0.13.8 images are digest-pinned. Runtime checks verify that certifi, HTTPX, pytest, Ruff, and pip are absent.
+- Application builds install current distro package updates and remove APT indexes. Package managers are removed from runtime images.
+- CI builds only changed custom service images and retains their JSON scan reports. Each publishing job scans its exact image before push. High/critical findings with listed fixes block publishing; findings without listed fixes are ignored. Build caches remain enabled and are scoped per service.
+- Trivy reports inherited Debian findings without listed fixes in both rebuilt application images. These are ignored by the maintainer's publishing policy, not claimed to be remediated.
+- TimescaleDB 2.32.0 on PG17 is an explicitly pinned candidate, not an approved deployment. Disposable tests pass an upgrade from 2.28.0, cross-owner permission rejection, role reconciliation, application migrations, dump/restore, restart persistence, and application health/SSR/Brotli checks. Existing installed extensions, including `template1`, are upgraded before database readiness is reported.
+- PR validation no longer loads infrastructure secrets for Terraform plans. Trusted `master` push/dispatch runs use a constrained environment target and triggering commit SHA; arbitrary checkout ref, script, and working-directory inputs are removed. Manual `ci` dispatch defaults to plan-only.
+- New-host bootstrap uses Docker's signed Jammy repository with declared Engine 29.9.3 and companion package pins. This does not upgrade the existing host because cloud-init metadata is ignored after creation.
+- The Dokploy bootstrap target is v0.31.2, published 2026-11-13, using its version-specific release installer. The multi-platform image is published; the Terraform provider remains at 0.4.0. This is a rebuild-only pin update, not an in-place upgrade of the running installation.
+- Docker Dependabot coverage includes `postgres/` and `compose/`. A weekly read-only release report covers unmanaged components.
+- Janus's public router accepts only the exact `/` path, excluding the vulnerable `/data` Range-header handler. The upstream binary remains unpatched; additional Docker-network isolation is deferred.
+
+### Gates still blocking deployment
+
+- The Timescale candidate scan reports PostgreSQL fixes in 17.12. Upstream's 2.32.0 release limits compatibility to PG17.11; the required 2.32.1 image was not available during preparation. Do not upgrade PostgreSQL independently or suppress the database findings.
+- Representative production backup restore, control-plane/ACME recovery checks, installed-host inventory, reviewed state-backed Terraform plans, host package maintenance, reboot, and external routing verification require the approved CI maintenance window. None were executed from this branch.
+- Static Terraform validation passes for bootstrap and Dokploy. Production validation stops at the missing chezmoi-managed SSH public-key file; no infrastructure secrets were materialized.
+- Non-Dokploy provider constraints and locks are updated to Linode 4.9.0, HTTP 3.6.3, Local 2.9.1, Null 3.3.2, Random 3.9.1, and Time 0.14.2. Signed checksums cover Linux and macOS on amd64 and arm64. Dotenv remains at its current release, 1.2.10; the Dokploy provider remains unchanged at 0.4.0. Bootstrap and Dokploy static validation pass; production validation still requires its managed SSH public key. State-backed upgrade plans have not been run.
 
 ## Completion criteria
 
