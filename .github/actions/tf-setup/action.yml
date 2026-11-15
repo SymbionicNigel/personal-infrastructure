@@ -26,14 +26,13 @@ name: tf-setup
 
 runs:
   steps:
-    # SSH->HTTPS rewrite so the PAT can reach the private .secrets repo.
     - env:
         CI_PAT: ${{ inputs.ci_pat }}
       name: Checkout submodules
       run: |
-        git config --global url."https://x-access-token:${CI_PAT}@github.com/".insteadOf "git@github.com:"
         git submodule sync --recursive
-        git submodule update --init --recursive
+        git -c "url.https://x-access-token:${CI_PAT}@github.com/.insteadOf=git@github.com:" \
+          submodule update --init --recursive
       shell: bash
 
     - name: Import GPG key
@@ -67,7 +66,8 @@ runs:
       name: chezmoi apply (Bitwarden-unlocked)
       run: |
         source dotfile-utils/scripts/source_bitwarden_session.sh
-        chezmoi apply --no-tty --config ./.chezmoi.toml
+        czm() { command chezmoi --config "$GITHUB_WORKSPACE/.chezmoi.toml" "$@"; }
+        czm apply --no-tty
       shell: bash
 
     - name: Install Terraform

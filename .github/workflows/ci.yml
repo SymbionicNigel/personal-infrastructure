@@ -10,9 +10,6 @@ concurrency:
   group: ci-${{ github.event_name == 'pull_request' && format('pr-{0}', github.ref) || 'main' }}
 
 jobs:
-  # Build+test each changed service via its reusable workflow. push_image is
-  # true off PRs, so PRs validate the image without pushing or touching the
-  # <SVC>_IMAGE_TAG variable.
   astarte:
     if: ${{ needs.changes.outputs.astarte == 'true' }}
     needs: changes
@@ -30,7 +27,7 @@ jobs:
       infra: ${{ steps.filter.outputs.infra || 'false' }}
       iris: ${{ steps.filter.outputs.iris || 'false' }}
       timescale_bootstrapped: ${{ steps.filter.outputs.timescale_bootstrapped || 'false' }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     steps:
       - if: ${{ github.event_name == 'push' }}
         uses: actions/checkout@v7
@@ -72,7 +69,7 @@ jobs:
         dokploy,
         typegen,
       ]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     steps:
       - if: ${{ contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') }}
         run: |
@@ -81,14 +78,12 @@ jobs:
       - run: |
           echo "ok: ${{ join(needs.*.result, ', ') }}"
 
-  # Gather every <SVC>_IMAGE_TAG repo Variable into TF_VAR_* lines. needs the
-  # service jobs so just-built tags are already recorded when read.
   collect:
     if: ${{ !cancelled() && !contains(needs.*.result, 'failure') && (github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && (needs.changes.outputs.infra == 'true' || needs.changes.outputs.astarte == 'true' || needs.changes.outputs.iris == 'true' || needs.changes.outputs.timescale_bootstrapped == 'true')) || (github.event_name == 'pull_request' && needs.changes.outputs.infra == 'true' && github.actor != 'dependabot[bot]')) }}
     needs: [changes, astarte, iris, timescale_bootstrapped]
     outputs:
       tf_vars: ${{ steps.tags.outputs.tf_vars }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     steps:
       - env:
           ASTARTE_CHANGED: ${{ needs.changes.outputs.astarte }}
@@ -98,15 +93,11 @@ jobs:
         id: tags
         name: Collect service image tags
         run: |
+          tf_vars=$(gh variable list --repo "${GITHUB_REPOSITORY}" --json name,value \
+            --jq '.[] | select(.name | endswith("_IMAGE_TAG")) | "TF_VAR_\(.name)=\(.value)"')
           {
             echo "tf_vars<<TFVARS_EOF"
-            # Base: current deployed tags for every service (unchanged ones use these).
-            gh variable list --repo "${GITHUB_REPOSITORY}" --json name,value \
-              --jq '.[] | select(.name | endswith("_IMAGE_TAG")) | "TF_VAR_\(.name)=\(.value)"' || true
-            # Changed services: override with the commit SHA their build tags the
-            # image with (appended last -> wins in the export loop), so the
-            # dokploy PR plan reflects the image update a merge would make. No-op
-            # on push, where it equals the just-recorded variable.
+            printf '%s\n' "$tf_vars"
             [ "${ASTARTE_CHANGED}" = "true" ] && echo "TF_VAR_ASTARTE_IMAGE_TAG=${GITHUB_SHA}"
             [ "${IRIS_CHANGED}" = "true" ] && echo "TF_VAR_IRIS_IMAGE_TAG=${GITHUB_SHA}"
             [ "${TIMESCALE_BOOTSTRAPPED_CHANGED}" = "true" ] && echo "TF_VAR_TIMESCALE_BOOTSTRAPPED_IMAGE_TAG=${GITHUB_SHA}"
@@ -114,12 +105,9 @@ jobs:
           } >> "$GITHUB_OUTPUT"
 
   # Render + deploy the compose stack from the collected tags, after the host
-  # converges. Gated on collect (which carries the event/change conditions);
-  # prod stays in needs only for ordering. Keying on prod via the default
-  # success() gate would wrongly skip this whenever prod's terminal apply job is
-  # skipped (every PR under plan_only, and any no-op apply on push).
+  # converges. Gated on collect (which carries the event/change conditions).
   dokploy:
-    if: ${{ !cancelled() && !contains(needs.*.result, 'failure') && needs.collect.result == 'success' && needs.typegen.result == 'success' }}
+    if: ${{ !cancelled() && !contains(needs.*.result, 'failure') && needs.collect.result == 'success' && (needs.typegen.result == 'success' || needs.typegen.result == 'skipped') }}
     needs: [collect, prod, typegen]
     secrets: inherit
     uses: ./.github/workflows/_terraform-apply.yml
@@ -139,9 +127,9 @@ jobs:
       push_image: ${{ github.event_name != 'pull_request' }}
 
   # Provision/converge the host. Runs after all service builds; skipped (not
-  # failed) builds are fine, a failed build blocks the deploy. plan_only on PRs.
+  # failed) builds are fine, a failed build blocks the deploy.
   prod:
-    if: ${{ !cancelled() && !contains(needs.*.result, 'failure') && needs.typegen.result == 'success' && (github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && (needs.changes.outputs.infra == 'true' || needs.changes.outputs.astarte == 'true' || needs.changes.outputs.iris == 'true' || needs.changes.outputs.timescale_bootstrapped == 'true')) || (github.event_name == 'pull_request' && needs.changes.outputs.infra == 'true' && github.actor != 'dependabot[bot]')) }}
+    if: ${{ !cancelled() && !contains(needs.*.result, 'failure') && (needs.typegen.result == 'success' || needs.typegen.result == 'skipped') && (github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && (needs.changes.outputs.infra == 'true' || needs.changes.outputs.astarte == 'true' || needs.changes.outputs.iris == 'true' || needs.changes.outputs.timescale_bootstrapped == 'true')) || (github.event_name == 'pull_request' && needs.changes.outputs.infra == 'true' && github.actor != 'dependabot[bot]')) }}
     needs: [changes, astarte, iris, timescale_bootstrapped, typegen]
     secrets: inherit
     uses: ./.github/workflows/_terraform-apply.yml
@@ -181,14 +169,14 @@ jobs:
       POSTGRES_USER: ci_root
     if: ${{ needs.changes.outputs.astarte == 'true' || needs.changes.outputs.iris == 'true' || needs.changes.outputs.timescale_bootstrapped == 'true' }}
     needs: changes
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     services:
       postgres:
         env:
           POSTGRES_DB: app
           POSTGRES_PASSWORD: ci-superuser
           POSTGRES_USER: ci_root
-        image: timescale/timescaledb:latest-pg17
+        image: timescale/timescaledb:2.32.0-pg17@sha256:6a6b7d7a346d7c6be03a310c240706f3bbc6d7adbdf3fbc07823570b34337f5e
         options: >-
           --health-cmd "pg_isready -U ci_root -d app"
           --health-interval 5s
@@ -210,9 +198,11 @@ jobs:
             --set=iris_ro_password="ci-iris-ro" \
             --file=postgres/scripts/reconcile-roles.sql
 
-      - uses: astral-sh/setup-uv@v7
+      - uses: astral-sh/setup-uv@v8.2.0
         with:
           enable-cache: true
+          python-version: 3.14.9
+          version: 0.13.8
 
       - name: Install astarte deps
         run: uv sync --frozen
@@ -231,7 +221,7 @@ jobs:
         with:
           cache: pnpm
           cache-dependency-path: iris/pnpm-lock.yaml
-          node-version: 24
+          node-version: 26.13.1
 
       - name: Install iris deps
         run: pnpm install --frozen-lockfile

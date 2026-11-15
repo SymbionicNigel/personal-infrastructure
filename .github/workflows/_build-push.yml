@@ -13,16 +13,21 @@ jobs:
     permissions:
       contents: read
       packages: write
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     steps:
       - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
 
-      - id: meta
+      - env:
+          IMAGE_NAME: ${{ inputs.image_name }}
+          SERVICE: ${{ inputs.service }}
+        id: meta
         name: Compute lowercased image ref
         run: |
           owner="${GITHUB_REPOSITORY_OWNER,,}"
-          image="${{ inputs.image_name }}"
-          [ -n "$image" ] || image="${{ inputs.service }}"
+          image="$IMAGE_NAME"
+          [ -n "$image" ] || image="$SERVICE"
           echo "image=ghcr.io/${owner}/${image,,}" >> "$GITHUB_OUTPUT"
 
       - uses: docker/setup-buildx-action@v4
@@ -38,13 +43,41 @@ jobs:
 
       - uses: docker/build-push-action@v7
         with:
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=${{ inputs.service }}
+          cache-to: type=gha,mode=max,scope=${{ inputs.service }}
           context: ${{ inputs.context }}
-          push: ${{ inputs.push_image }}
+          load: true
+          push: false
           tags: |
             ${{ steps.meta.outputs.image }}:${{ github.sha }}
             ${{ steps.meta.outputs.image }}:latest
+
+      - env:
+          IMAGE: ${{ steps.meta.outputs.image }}
+          SCAN_EXIT_CODE: ${{ inputs.service == 'timescale_bootstrapped' && '0' || '1' }}
+        name: Scan image (${{ inputs.service == 'timescale_bootstrapped' && 'report-only' || 'blocking' }})
+        run: |
+          mkdir -p "$RUNNER_TEMP/security-scans"
+          docker run --rm \
+            -v /var/run/docker.sock:/var/run/docker.sock:ro \
+            -v "$RUNNER_TEMP/security-scans:/reports" \
+            aquasec/trivy:0.76.2@sha256:8f6bb947dbc528902e11f2f5be52f7b519f6a39d5d148f41166f2040499768fb \
+            image --scanners vuln --severity HIGH,CRITICAL --ignore-unfixed --exit-code "$SCAN_EXIT_CODE" \
+            --image-src docker --format json --output /reports/image.json "$IMAGE:$GITHUB_SHA"
+
+      - if: ${{ always() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: security-scan-${{ inputs.service }}
+          path: ${{ runner.temp }}/security-scans/
+
+      - env:
+          IMAGE: ${{ steps.meta.outputs.image }}
+        if: ${{ inputs.push_image }}
+        name: Publish scanned image
+        run: |
+          docker push "$IMAGE:$GITHUB_SHA"
+          docker push "$IMAGE:latest"
 
       # GITHUB_TOKEN can't manage Variables, so use CI_PAT. The orchestrator
       # reads every *_IMAGE_TAG variable. Skipped on no-push (PR) builds.

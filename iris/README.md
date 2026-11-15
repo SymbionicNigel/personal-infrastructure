@@ -1,12 +1,12 @@
 # iris
 
-React Router v7 (framework mode) web frontend — the visible face of the stack,
+React Router v8 (framework mode) web frontend, the visible face of the stack,
 served at `iris.<HOSTNAME_TLD>` in prod and `localhost:3000` in dev. The apex +
 `www` redirect to it; undefined subdomains land on its branded 404.
 
 ## Stack
 
-- **React Router v7** (SSR, framework mode) on **Vite 8 / Node 24**, ESM.
+- **React Router v8** (SSR, framework mode) on **Vite 8 / Node 26.13.1**, ESM.
 - **Panda CSS** (zero-runtime tokens/recipes) + **Park UI** (Ark UI) components,
   with a 60s vintage dark palette.
 - **i18next** + remix-i18next middleware (SSR-aware locale; English seed).

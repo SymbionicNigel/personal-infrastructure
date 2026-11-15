@@ -1,6 +1,6 @@
 import { initReactI18next } from 'react-i18next';
 import { createCookie } from 'react-router';
-import { createI18nextMiddleware } from 'remix-i18next/middleware';
+import { createI18nextMiddleware } from 'remix-i18next';
 import i18n from '~/i18n';
 import resources from '~/locales';
 import 'i18next';

@@ -56,6 +56,17 @@ updates:
     schedule:
       interval: weekly
 
+  - directories:
+      - /postgres
+      - /compose
+    groups:
+      docker:
+        update-types: [minor, patch]
+    labels: [dependencies, docker]
+    package-ecosystem: docker
+    schedule:
+      interval: weekly
+
   # Terraform provider/module constraints in each environment + the modules.
   - directories:
       - /linode/environments/bootstrap

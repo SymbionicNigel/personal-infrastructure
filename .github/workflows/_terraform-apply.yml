@@ -1,29 +1,23 @@
-# Reusable Terraform plan-then-apply. The plan job runs the wrapper in detect
-# mode and outputs has_changes; the apply job — which carries `environment:` —
-# only runs when has_changes is true, so a no-op apply records no Deployment.
-# Shared setup lives in .github/actions/tf-setup.
-#
 # Required repo secrets (via `secrets: inherit`):
 #   GPG_PRIVATE_KEY
 #   BW_CLIENTID, BW_CLIENTSECRET, BW_PASSWORD
 #   CI_PAT  (reads the private .secrets submodule)
+#   GHCR_PAT  (Dokploy's GHCR pull credential)
 
-# Serialize every linode TF op against the shared host / S3 state locks.
 concurrency:
   cancel-in-progress: false
   group: linode-tf-apply
 
 jobs:
   apply:
-    # `environment:` creates the Deployment when the job starts; the `if` keeps
-    # this job from running (and from recording one) on a no-op plan.
     environment: ${{ inputs.label }}
     if: ${{ !inputs.plan_only && needs.plan.outputs.has_changes == 'true' }}
     needs: plan
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     steps:
       - uses: actions/checkout@v7
         with:
+          persist-credentials: false
           ref: ${{ inputs.ref }}
 
       - name: Setup (submodules, GPG, chezmoi, Terraform)
@@ -41,6 +35,7 @@ jobs:
           BW_CLIENTSECRET: ${{ secrets.BW_CLIENTSECRET }}
           BW_PASSWORD: ${{ secrets.BW_PASSWORD }}
           SCRIPT: ${{ inputs.script }}
+          TF_VAR_GHCR_PAT: ${{ secrets.GHCR_PAT }}
           TF_VARS: ${{ inputs.tf_vars }}
         name: terraform apply (${{ inputs.script }})
         run: |
@@ -56,10 +51,11 @@ jobs:
   plan:
     outputs:
       has_changes: ${{ steps.plan.outputs.has_changes }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     steps:
       - uses: actions/checkout@v7
         with:
+          persist-credentials: false
           ref: ${{ inputs.ref }}
 
       - name: Setup (submodules, GPG, chezmoi, Terraform)
@@ -72,8 +68,6 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
 
-      # Wrapper exits with terraform's -detailed-exitcode rc (0 none, 2 changes,
-      # 1 error). Plan output is teed into the run summary.
       - env:
           BW_CLIENTID: ${{ secrets.BW_CLIENTID }}
           BW_CLIENTSECRET: ${{ secrets.BW_CLIENTSECRET }}
@@ -81,6 +75,7 @@ jobs:
           LABEL: ${{ inputs.label }}
           SCRIPT: ${{ inputs.script }}
           TF_DETECT_CHANGES: "true"
+          TF_VAR_GHCR_PAT: ${{ secrets.GHCR_PAT }}
           TF_VARS: ${{ inputs.tf_vars }}
         id: plan
         name: terraform plan (${{ inputs.script }})
@@ -96,7 +91,7 @@ jobs:
           rc=${PIPESTATUS[0]}
           set -e
           {
-            echo "### Terraform plan — ${LABEL}"
+            echo "### Terraform plan: ${LABEL}"
             if [ "$rc" = "2" ]; then
               echo "**Changes detected.**"
             elif [ "$rc" = "0" ]; then

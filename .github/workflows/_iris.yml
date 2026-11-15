@@ -18,7 +18,7 @@ jobs:
     defaults:
       run:
         working-directory: iris
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     steps:
       - uses: actions/checkout@v7
 
@@ -31,7 +31,7 @@ jobs:
         with:
           cache: pnpm
           cache-dependency-path: iris/pnpm-lock.yaml
-          node-version: 24
+          node-version: 26.13.1
 
       - run: pnpm install --frozen-lockfile
 
@@ -42,6 +42,8 @@ jobs:
       - run: pnpm test
 
       - run: pnpm build
+
+      - run: pnpm audit --prod --audit-level high
 
       # Fail the build if any prod dependency ships under a non-permissive
       # license. The repo is Apache-2.0; copyleft (GPL/AGPL) and source-available

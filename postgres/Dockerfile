@@ -8,7 +8,7 @@
 # to the repo's `postgres/scripts/` directory. Baking the scripts into
 # the image keeps prod and dev on the same mechanism.
 
-FROM timescale/timescaledb:latest-pg17
+FROM timescale/timescaledb:2.32.0-pg17@sha256:6a6b7d7a346d7c6be03a310c240706f3bbc6d7adbdf3fbc07823570b34337f5e
 
 COPY scripts/entrypoint.sh /scripts/entrypoint.sh
 COPY scripts/reconcile-roles.sql /scripts/reconcile-roles.sql

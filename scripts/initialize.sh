@@ -5,7 +5,6 @@ set -euo pipefail
 
 REPO_ROOT="$(git -C "$(dirname "$0")" rev-parse --show-toplevel)"
 
-# --- pnpm + Node 24 (frontend) ---
 # pnpm must be the *standalone* build for `pnpm env` to manage Node; a pnpm
 # installed via npm/nvm/corepack errors with ERR_PNPM_CANNOT_MANAGE_NODE.
 install_standalone_pnpm() {
@@ -19,13 +18,10 @@ if ! command -v pnpm >/dev/null 2>&1; then
 else
   echo "pnpm already installed: $(pnpm --version)"
 fi
-# Pin the Node runtime pnpm manages to 24 (matches iris + CI). If the existing
-# pnpm can't manage Node (non-standalone install), swap in the standalone build
-# and retry. Idempotent.
-if ! pnpm env use --global 24; then
+if ! pnpm env use --global 26.13.1; then
   echo "pnpm cannot manage Node; installing standalone pnpm and retrying..."
   install_standalone_pnpm
-  pnpm env use --global 24
+  pnpm env use --global 26.13.1
 fi
 
 # --- uv (Python services) ---

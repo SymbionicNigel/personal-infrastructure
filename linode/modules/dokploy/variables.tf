@@ -33,7 +33,7 @@ variable "DOKPLOY_ADMIN_PASSWORD" {
 variable "DOKPLOY_VERSION" {
   type        = string
   nullable    = false
-  description = "Pinned Dokploy release tag (e.g. v0.27.0). Honored by https://dokploy.com/install.sh via the DOKPLOY_VERSION env var. Pinning here avoids surprise upgrades on rebuild."
+  description = "Dokploy release tag used to select the version-specific installation script."
 }
 
 variable "deploy_user" {

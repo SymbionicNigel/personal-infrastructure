@@ -48,8 +48,8 @@ variable "DASHBOARD_SUBDOMAIN" {
 variable "DOKPLOY_VERSION" {
   type        = string
   nullable    = false
-  default     = "v0.29.4"
-  description = "Pinned Dokploy release tag. Defaulted so rebuilds are reproducible — only override (via TF_VAR_DOKPLOY_VERSION) for one-off testing of a different version. To bump the production pin, edit the default here and commit."
+  default     = "v0.31.2"
+  description = "Pinned Dokploy release tag for new host provisioning. Override with TF_VAR_DOKPLOY_VERSION. Changing this value does not upgrade an existing installation."
 }
 
 variable "GPG_RECIPIENT" {

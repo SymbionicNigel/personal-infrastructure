@@ -89,10 +89,23 @@ chown -R ${DEPLOY_USER}:${DEPLOY_USER} /home/${DEPLOY_USER}/.ssh
 chmod 700 /home/${DEPLOY_USER}/.ssh
 chmod 600 /home/${DEPLOY_USER}/.ssh/authorized_keys
 
-# Install docker and docker compose
-curl -fsSL https://get.docker.com -o get-docker.sh
-sh get-docker.sh
-rm get-docker.sh
+install -m 0755 -d /etc/apt/keyrings
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+DOCKER_KEY_FINGERPRINT=$(gpg --show-keys --with-colons /etc/apt/keyrings/docker.asc \
+  | awk -F: '$1 == "pub" { primary = 1 } primary && $1 == "fpr" { print $10; primary = 0 }')
+test "$DOCKER_KEY_FINGERPRINT" = 9DC858229FC7DD38854AE2D88D81803C0EBFCD88
+chmod a+r /etc/apt/keyrings/docker.asc
+printf 'deb [arch=%s signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu jammy stable\n' \
+  "$(dpkg --print-architecture)" > /etc/apt/sources.list.d/docker.list
+apt-get update -y
+DOCKER_ENGINE_VERSION="5:29.9.3-1~ubuntu.22.04~jammy"
+apt-get install "$${APT_OPTS[@]}" \
+  "docker-ce=$DOCKER_ENGINE_VERSION" \
+  "docker-ce-cli=$DOCKER_ENGINE_VERSION" \
+  "containerd.io=2.4.2-4~ubuntu.22.04~jammy" \
+  "docker-buildx-plugin=0.39.0-1~ubuntu.22.04~jammy" \
+  "docker-compose-plugin=5.7.1-1~ubuntu.22.04~jammy"
+apt-mark hold docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
 
 systemctl enable docker
 usermod -aG docker ${DEPLOY_USER}
@@ -105,11 +118,8 @@ SUDO_EOF
 chmod 440 /etc/sudoers.d/${DEPLOY_USER}
 visudo -c -f /etc/sudoers.d/${DEPLOY_USER}
 
-# Install dokploy at the pinned version. The install script reads
-# DOKPLOY_VERSION from the environment; without it, it auto-detects the
-# latest release from GitHub, which would silently roll forward on rebuild.
 export DOKPLOY_VERSION="${DOKPLOY_VERSION}"
-curl -sSL https://dokploy.com/install.sh | sh
+curl -fsSL "https://github.com/Dokploy/dokploy/releases/download/$DOKPLOY_VERSION/install.sh" | sh
 
 # Wait for Dokploy to be ready
 until curl -sf http://localhost:3000 > /dev/null 2>&1; do sleep 5; done
