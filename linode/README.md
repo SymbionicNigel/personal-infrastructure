@@ -7,6 +7,12 @@ If initializing again, in CI, or for another project:
 1. Install prerequisite cli tools
    1. Follow the instructions at the following link to install [terraform](https://developer.hashicorp.com/terraform/install#linux)
    2. Follow the instructions at the following link to install the [linode-cli](https://techdocs.akamai.com/cloud-computing/docs/install-and-configure-the-cli)
+   3. Create a [Tailscale account](https://login.tailscale.com/start) — the
+   production stack manages your tailnet as code (`module.tailnet`) and joins
+   the Dokploy host to it. Then generate an OAuth client (Tailnet settings →
+   Trust credentials → OAuth clients) scoped to Auth Keys (write), DNS (write),
+   Policy File (write), Devices (read); `bootstrap.sh` prompts for its ID and
+   secret along with `HOME_LAN_CIDR`.
 2. Setup the Bootstrap env file
    1. Copy the .example.env file located in `environments/bootstrap/` to `environments/bootstrap/.env`
    2. Run the following command `linode configure --token` and replace the

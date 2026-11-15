@@ -1,0 +1,3 @@
+# Dokploy Layer is a separate Terraform root module
+
+The Dokploy Layer is split into its own Terraform root module with its own backend — not folded into the Production Layer — because the API key that initializes the Dokploy Layer's backend is created *inside* the Production Layer, and Terraform cannot re-initialize a provider mid-apply. A single combined module was the obvious alternative; it is unworkable for this reason. The split is therefore a mechanical necessity, not a domain boundary, though the Dokploy Layer has since taken on the conceptual job of holding the systems and integrations that belong to the Dokploy instance itself.

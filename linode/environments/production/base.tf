@@ -12,6 +12,10 @@ terraform {
       source  = "hashicorp/local"
       version = "~> 2.5"
     }
+    tailscale = {
+      source  = "tailscale/tailscale"
+      version = "~> 0.21"
+    }
   }
 
   backend "s3" {}
@@ -29,6 +33,14 @@ provider "linode" {
   # authenticate to the S3 endpoint without a long-lived obj key threaded
   # through .env. Revoked when the apply finishes.
   obj_use_temp_keys = true
+}
+
+# Tailnet-as-code. OAuth client (recommended over a personal API key).
+# tailnet "-" = the OAuth client's own tailnet.
+provider "tailscale" {
+  oauth_client_id     = var.TAILSCALE_OAUTH_CLIENT_ID
+  oauth_client_secret = var.TAILSCALE_OAUTH_CLIENT_SECRET
+  tailnet             = "-"
 }
 
 # TODO: handle restricting network access/VPC
@@ -168,6 +180,52 @@ resource "local_file" "ssh_config" {
         StrictHostKeyChecking accept-new
         UserKnownHostsFile ~/.ssh/known_hosts_dokploy
   EOT
+}
+
+module "tailnet" {
+  source = "../../modules/tailnet"
+
+  home_lan_cidr = var.HOME_LAN_CIDR
+}
+
+# Join the Linode host to the tailnet as tag:dokploy. Mirrors ghcr_login:
+# ships the shared install-tailscale.sh, runs it, rm's the key in the same step.
+# Triggers on host IP + key hash, so rebuilds/rotation re-converge hands-off.
+# --ssh enables Tailscale SSH so later Ansible push reaches home boxes through
+# this host's tailscale0.
+resource "null_resource" "tailscale_join" {
+  depends_on = [module.dokploy-instance, module.tailnet]
+
+  triggers = {
+    instance_ip = module.dokploy-instance.instance_ip
+    key_hash    = sha256(module.tailnet.cloud_auth_key)
+  }
+
+  connection {
+    type        = "ssh"
+    host        = module.dokploy-instance.instance_ip
+    user        = module.dokploy-instance.deploy_user
+    private_key = file("${path.root}/id_ed25519")
+  }
+
+  provisioner "file" {
+    source      = "${path.root}/../../../homelab/scripts/install-tailscale.sh"
+    destination = "/home/${module.dokploy-instance.deploy_user}/install-tailscale.sh"
+  }
+
+  provisioner "remote-exec" {
+    inline = [
+      <<-EOT
+      set -eu
+      chmod +x /home/${module.dokploy-instance.deploy_user}/install-tailscale.sh
+      sudo /home/${module.dokploy-instance.deploy_user}/install-tailscale.sh \
+        --authkey '${module.tailnet.cloud_auth_key}' \
+        --advertise-tags tag:dokploy \
+        --ssh
+      rm -f /home/${module.dokploy-instance.deploy_user}/install-tailscale.sh
+      EOT
+    ]
+  }
 }
 
 module "acme_backup" {

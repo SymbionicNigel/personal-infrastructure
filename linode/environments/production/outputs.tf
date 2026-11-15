@@ -34,3 +34,15 @@ output "dokploy_backups_secret_key" {
   sensitive   = true
   description = "Secret access key for Dokploy native backups"
 }
+
+output "tailnet_compute_auth_key" {
+  value       = module.tailnet.compute_auth_key
+  sensitive   = true
+  description = "Auth key for the ThinkCentre (tag:mc-compute); consumed by Phase 0 Task A"
+}
+
+output "tailnet_gateway_auth_key" {
+  value       = module.tailnet.gateway_auth_key
+  sensitive   = true
+  description = "Auth key for the Pi (tag:mc-gateway); consumed by Phase 0 Task B"
+}

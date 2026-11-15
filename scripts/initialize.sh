@@ -63,6 +63,15 @@ else
   echo "bw already installed: $(bw --version)"
 fi
 
+# --- xorriso (remaster the ThinkCentre autoinstall ISO) ---
+# Used by homelab/scripts/build-thinkcentre-iso.sh to inject the NoCloud payload
+# and replay the ISO's boot records. apt package; needs sudo.
+if ! command -v xorriso >/dev/null 2>&1; then
+  sudo apt-get update && sudo apt-get install -y xorriso
+else
+  echo "xorriso already installed: $(xorriso --version 2>&1 | head -1)"
+fi
+
 # --- Python project sync (each top-level pyproject.toml) ---
 # Generates uv.lock and .venv for every service. New Python services get
 # picked up automatically without touching this script.

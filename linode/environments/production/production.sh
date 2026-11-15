@@ -49,6 +49,14 @@ if [ "${TF_PLAN_ONLY:-false}" = "true" ]; then
     terraform plan -input=false
     exit 0
 fi
+
+# TF_TARGET=<address> applies a single resource (with its dependencies) and skips
+# the developer bootstrap. Used for surgical steps like pushing only the tailnet
+# ACL ahead of re-scoping the OAuth client.
+if [ -n "${TF_TARGET:-}" ]; then
+    terraform apply -input=false -auto-approve -target="$TF_TARGET"
+    exit 0
+fi
 terraform apply -input=false -auto-approve
 
 # Remaining steps are local-developer bootstrap (SSH config Include, handing the

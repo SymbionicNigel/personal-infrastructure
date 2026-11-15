@@ -43,7 +43,7 @@ upsert_env_var() {
         # `|` chosen as delimiter — won't appear in AWS creds or TF_VAR values
         sed -i "s|^${key}=.*|${key}=${value}|" "$PROD_ENV"
     else
-        printf "\n%s=%s" key value >> "$PROD_ENV"
+        printf "\n%s=%s" "$key" "$value" >> "$PROD_ENV"
     fi
 }
 
@@ -85,6 +85,11 @@ prompt_if_missing "TF_VAR_GPG_RECIPIENT"          "GPG recipient (id/fingerprint
 prompt_if_missing "TF_VAR_DEPLOY_USER"            "Deploy sudoer username created on the Dokploy host (e.g. deploy)"
 # Consumed by the dokploy environment; production.sh forwards it into dokploy/.env.
 prompt_if_missing "TF_VAR_DOKPLOY_PROJECT_NAME"   "Dokploy project name for the services stack (e.g. services)"
+# Tailnet-as-code (module.tailnet). OAuth client powers the tailscale provider;
+# HOME_LAN_CIDR is the route the Pi subnet router advertises.
+prompt_if_missing "TF_VAR_TAILSCALE_OAUTH_CLIENT_ID"     "Tailscale OAuth client ID"     "secret"
+prompt_if_missing "TF_VAR_TAILSCALE_OAUTH_CLIENT_SECRET" "Tailscale OAuth client secret" "secret"
+prompt_if_missing "TF_VAR_HOME_LAN_CIDR"                 "Home LAN CIDR advertised by the Pi subnet router (e.g. 192.168.1.0/24)"
 
 terraform init
 terraform apply

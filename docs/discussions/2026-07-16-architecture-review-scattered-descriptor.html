@@ -1,0 +1,289 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Citadel — Architecture Review</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+<style>
+  body { background:#0b1020; }
+  .card { background:#111830; border:1px solid #1e2a4a; }
+  .mono, code, pre { font-family:ui-monospace,Menlo,monospace; }
+  .mermaid { background:#0d1428; border-radius:.5rem; padding:.75rem; }
+  .before { border-left:3px solid #b45454; }
+  .after  { border-left:3px solid #3f9b6b; }
+</style>
+</head>
+<body class="text-slate-200 font-sans">
+<div class="max-w-5xl mx-auto px-5 py-10">
+
+  <header class="mb-10">
+    <p class="text-xs tracking-widest text-amber-400 uppercase mb-2">Citadel · Whole-codebase architecture review</p>
+    <h1 class="text-3xl font-bold text-white leading-tight">One motif, three times: the scattered descriptor</h1>
+    <p class="text-slate-400 mt-4 max-w-3xl leading-relaxed">
+      Reading the whole tree, the same shape recurs across the infra layers: a domain entity
+      (<em>a tailnet device</em>, <em>a postgres role</em>, <em>a stack service’s env</em>) whose identity is
+      smeared across three or four files, held together not by code but by a hand-maintained
+      <span class="text-slate-200">“to add one, edit these N places”</span> comment checklist. Each is a
+      <strong>shallow</strong> arrangement — the interface (the checklist you must remember) is as big as the thing itself.
+    </p>
+    <div class="mt-5 rounded-lg border border-emerald-500/25 bg-emerald-500/[0.06] p-4 max-w-3xl">
+      <p class="text-sm text-slate-300 leading-relaxed">
+        <span class="text-emerald-300 font-semibold">The north star already exists in this repo.</span>
+        <span class="mono text-slate-200">iris/app/nav.ts</span> defines pages <em>once</em> as a
+        <span class="mono">PAGES</span> tree, and both the route table (<span class="mono">routes.ts</span>) and the
+        breadcrumb navigation (<span class="mono">useBreadcrumbs</span>) are <em>derived</em> from it. That is a deep
+        module: one small registry, many consumers, add-a-page-is-one-edit. The three candidates below are the same
+        move applied to the infra layers, which haven’t adopted it yet.
+      </p>
+    </div>
+  </header>
+
+  <!-- Motif diagram -->
+  <section class="mb-12">
+    <h2 class="text-sm uppercase tracking-widest text-slate-500 mb-3">The shape, and its cure</h2>
+    <div class="grid md:grid-cols-2 gap-4">
+      <div class="before bg-[#160f14] rounded-lg p-4">
+        <p class="text-xs uppercase tracking-widest text-rose-300/80 mb-2">Shallow — the checklist is the interface</p>
+        <div class="mermaid">
+flowchart TD
+  E(("add one<br/>entity")) --> F1["file 1"]
+  E --> F2["file 2"]
+  E --> F3["file 3"]
+  E --> F4["file 4"]
+  C["comment:<br/>'keep these in sync 🤞'"] -.- F1
+  C -.- F4
+  style E stroke:#b45454,stroke-width:2px
+        </div>
+      </div>
+      <div class="after bg-[#0e1613] rounded-lg p-4">
+        <p class="text-xs uppercase tracking-widest text-emerald-300/80 mb-2">Deep — one registry, derived (the iris PAGES pattern)</p>
+        <div class="mermaid">
+flowchart TD
+  R["descriptor table<br/>(one row per entity)"] --> D1["derived: keys / resources"]
+  R --> D2["derived: policy / grants"]
+  R --> D3["derived: outputs / payload"]
+  style R stroke:#3f9b6b,stroke-width:2px
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CANDIDATE A -->
+  <article class="card rounded-xl p-6 mb-8">
+    <div class="flex items-start justify-between gap-4">
+      <h3 class="text-xl font-semibold text-white">A · A <span class="mono text-emerald-300">devices</span> table for the tailnet</h3>
+      <span class="shrink-0 text-xs font-bold px-3 py-1 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">Strong</span>
+    </div>
+    <div class="grid md:grid-cols-2 gap-6 mt-5">
+      <div>
+        <h4 class="text-xs uppercase tracking-widest text-slate-500 mb-2">Files</h4>
+        <ul class="text-sm text-slate-300 space-y-1 mono">
+          <li>linode/modules/tailnet/main.tf</li>
+          <li>linode/modules/tailnet/acl.hujson</li>
+          <li>linode/environments/production/outputs.tf</li>
+          <li>homelab/scripts/pi-firstrun.sh:12</li>
+        </ul>
+        <h4 class="text-xs uppercase tracking-widest text-slate-500 mb-2 mt-5">Problem</h4>
+        <p class="text-sm text-slate-300 leading-relaxed">
+          A device’s identity lives in four places: three copy-pasted <span class="mono">tailscale_tailnet_key</span>
+          resources (differing only in <span class="mono">description</span> + <span class="mono">tags</span>), a
+          hand-kept <span class="mono">tagOwners</span> block, per-device outputs, and — worst — the Pi’s advertised
+          route is <em>hardcoded</em> as <span class="mono">192.168.18.0/24</span> in <span class="mono">pi-firstrun.sh</span>,
+          re-stating <span class="mono">var.HOME_LAN_CIDR</span> with only a “must stay in sync … or the route won’t
+          auto-approve” comment holding them together. Change the CIDR in Terraform and the Pi silently advertises a
+          route that never auto-approves.
+        </p>
+      </div>
+      <div>
+        <h4 class="text-xs uppercase tracking-widest text-slate-500 mb-2">Solution</h4>
+        <p class="text-sm text-slate-300 leading-relaxed">
+          Define each device once — <span class="mono">{ tag, description, advertise_routes, ssh }</span> — and derive
+          the keys (<span class="mono">for_each</span>), <span class="mono">tagOwners</span>,
+          <span class="mono">autoApprovers</span>, and outputs from it. Because the advertised route is now a column,
+          stage it into the Pi payload from Terraform (the way the auth key already is), so
+          <span class="mono">pi-firstrun.sh</span> reads it from a file instead of hardcoding it. The CIDR exists once;
+          drift becomes impossible rather than merely discouraged.
+        </p>
+        <h4 class="text-xs uppercase tracking-widest text-slate-500 mb-2 mt-5">Benefits</h4>
+        <ul class="text-sm text-slate-300 space-y-2 leading-relaxed">
+          <li><strong class="text-emerald-300">Leverage:</strong> a new device / changed route is one map edit, not four.</li>
+          <li><strong class="text-emerald-300">Locality:</strong> tag, key, and routes for a device sit on one row.</li>
+          <li><strong class="text-emerald-300">Test surface:</strong> the map becomes assertable — a plan/policy check over one table replaces eyeballing three near-identical resources for divergence.</li>
+        </ul>
+      </div>
+    </div>
+    <div class="grid md:grid-cols-2 gap-4 mt-6">
+      <div class="before bg-[#160f14] rounded-lg p-4">
+        <p class="text-xs uppercase tracking-widest text-rose-300/80 mb-2">Before</p>
+        <pre class="text-[11px] leading-snug text-slate-400 overflow-x-auto"><code>acl.hujson   tagOwners: dokploy, mc-compute, mc-gateway
+             autoApprovers: 192.168.18.0/24 -> mc-gateway
+main.tf      key "cloud"   } three near-identical
+             key "compute" } tailscale_tailnet_key
+             key "gateway" } resources
+outputs.tf   compute_auth_key, gateway_auth_key
+pi-firstrun  HOME_LAN_CIDR=192.168.18.0/24   # dup of var</code></pre>
+      </div>
+      <div class="after bg-[#0e1613] rounded-lg p-4">
+        <p class="text-xs uppercase tracking-widest text-emerald-300/80 mb-2">After</p>
+        <pre class="text-[11px] leading-snug text-slate-300 overflow-x-auto"><code>locals.devices = {
+  dokploy    = { tag=..., routes=[],              ssh=true }
+  mc-compute = { tag=..., routes=[] }
+  mc-gateway = { tag=..., routes=[var.HOME_LAN_CIDR] }
+}
+keys / tagOwners / autoApprovers / outputs
+                       = derived from devices
+pi route staged from TF -> read from file</code></pre>
+      </div>
+    </div>
+    <p class="text-[11px] text-slate-500 mt-3"><strong>Deletion test:</strong> collapsing the resources + owner list into the map <em>concentrates</em> complexity into one readable place. <span class="text-amber-300/80">ADR-0001-safe:</span> stays inside the tailnet module / Production Layer; doesn’t touch the Dokploy-Layer split.</p>
+  </article>
+
+  <!-- CANDIDATE B -->
+  <article class="card rounded-xl p-6 mb-8">
+    <div class="flex items-start justify-between gap-4">
+      <h3 class="text-xl font-semibold text-white">B · Derive the postgres <span class="mono text-emerald-300">--set</span> role bindings instead of listing them</h3>
+      <span class="shrink-0 text-xs font-bold px-3 py-1 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">Strong</span>
+    </div>
+    <div class="grid md:grid-cols-2 gap-6 mt-5">
+      <div>
+        <h4 class="text-xs uppercase tracking-widest text-slate-500 mb-2">Files</h4>
+        <ul class="text-sm text-slate-300 space-y-1 mono">
+          <li>postgres/scripts/entrypoint.sh</li>
+          <li>postgres/scripts/reconcile-roles.sql</li>
+          <li>.secrets/.chezmoitemplates/postgres-roles-env</li>
+        </ul>
+        <h4 class="text-xs uppercase tracking-widest text-slate-500 mb-2 mt-5">Problem</h4>
+        <p class="text-sm text-slate-300 leading-relaxed">
+          The same scattered-descriptor shape. <span class="mono">reconcile-roles.sql</span>’s own header spells out the
+          ritual: <em>“Adding a role: 1. add a <span class="mono">POSTGRES_&lt;NAME&gt;_PASSWORD</span>; 2. add a
+          <span class="mono">--set=&lt;name&gt;_password=…</span> binding to entrypoint.sh; 3. add a create-then-alter
+          pair.”</em> Step 2 is the fragile one — <span class="mono">entrypoint.sh</span> hardcodes
+          <span class="mono">--set=astarte_password=… --set=iris_ro_password=…</span>, one line per role. Add a role and
+          forget step 2 and the SQL fails at <span class="mono">:'newrole_password'</span> — at container start, i.e. a
+          fail-closed deploy outage.
+        </p>
+      </div>
+      <div>
+        <h4 class="text-xs uppercase tracking-widest text-slate-500 mb-2">Solution</h4>
+        <p class="text-sm text-slate-300 leading-relaxed">
+          The role→password convention is already regular (<span class="mono">POSTGRES_&lt;NAME&gt;_PASSWORD</span> →
+          <span class="mono">:'&lt;name&gt;_password'</span>). Generate the <span class="mono">--set</span> bindings in
+          <span class="mono">entrypoint.sh</span> by looping over the matching env vars, lowercasing the
+          <span class="mono">&lt;NAME&gt;</span>. Step 2 of the checklist disappears; the SQL file becomes the single
+          source of truth for <em>which</em> roles exist, and passwords wire themselves.
+        </p>
+        <h4 class="text-xs uppercase tracking-widest text-slate-500 mb-2 mt-5">Benefits</h4>
+        <ul class="text-sm text-slate-300 space-y-2 leading-relaxed">
+          <li><strong class="text-emerald-300">Removes a fail-closed foot-gun:</strong> the highest-consequence step (a missed binding = start-time crash) stops being manual.</li>
+          <li><strong class="text-emerald-300">Locality:</strong> “what roles exist” is answered by the SQL alone, not SQL × shell.</li>
+        </ul>
+        <p class="text-[11px] text-slate-500 mt-3">Aligns with your recorded fail-closed preference — this keeps the loud failure but removes the easy way to trip it.</p>
+      </div>
+    </div>
+    <div class="mt-5 before bg-[#160f14] rounded-lg p-4">
+      <pre class="text-[11px] leading-snug text-slate-400 overflow-x-auto"><code># entrypoint.sh — before (hand-listed, drifts from the SQL)
+psql ... --set=astarte_password="$POSTGRES_ASTARTE_PASSWORD" \
+         --set=iris_ro_password="$POSTGRES_IRIS_RO_PASSWORD" ...
+
+# after — derived from the POSTGRES_*_PASSWORD convention
+args=(); for v in "${!POSTGRES_@}"; do
+  case "$v" in *_PASSWORD) n=${v#POSTGRES_}; n=${n%_PASSWORD}
+    args+=(--set="${n,,}_password=${!v}") ;; esac
+done
+psql ... "${args[@]}" ...</code></pre>
+    </div>
+  </article>
+
+  <!-- CANDIDATE C -->
+  <article class="card rounded-xl p-6 mb-8">
+    <div class="flex items-start justify-between gap-4">
+      <h3 class="text-xl font-semibold text-white">C · A per-service env registry for the Dokploy Layer</h3>
+      <span class="shrink-0 text-xs font-bold px-3 py-1 rounded-full bg-amber-500/15 text-amber-300 border border-amber-500/30">Worth exploring</span>
+    </div>
+    <div class="grid md:grid-cols-2 gap-6 mt-5">
+      <div>
+        <h4 class="text-xs uppercase tracking-widest text-slate-500 mb-2">Files</h4>
+        <ul class="text-sm text-slate-300 space-y-1 mono">
+          <li>linode/environments/dokploy/main.tf</li>
+          <li>docs/guides/env-wiring.md</li>
+        </ul>
+        <h4 class="text-xs uppercase tracking-widest text-slate-500 mb-2 mt-5">Problem</h4>
+        <p class="text-sm text-slate-300 leading-relaxed">
+          The third instance of the motif, and the softest. Each service’s env is a separate
+          <span class="mono">data "dotenv"</span> block plus a hand-ordered entry in the
+          <span class="mono">merge(...)</span> whose <em>last-wins</em> collision semantics are load-bearing and
+          explained only in a comment. Adding a service’s env means: a new <span class="mono">.env.*.prod</span>, a new
+          <span class="mono">data</span> block, and remembering where it goes in the merge order.
+        </p>
+      </div>
+      <div>
+        <h4 class="text-xs uppercase tracking-widest text-slate-500 mb-2">Solution &amp; caution</h4>
+        <p class="text-sm text-slate-300 leading-relaxed">
+          A <span class="mono">for_each</span> over a service→env-file map would collapse the repeated
+          <span class="mono">data</span> blocks. But the collision ordering and the deliberate
+          <span class="mono">iris_typegen</span> exclusion are real domain rules, not accidents — a naive
+          <span class="mono">for_each</span> that flattens them would <em>move</em> complexity, not remove it. Worth
+          exploring only if the explicit precedence is preserved as data (e.g. an ordered list with intent, not
+          alphabetical <span class="mono">for_each</span>).
+        </p>
+        <div class="mt-3 rounded border border-amber-500/30 bg-amber-500/[0.06] p-3">
+          <p class="text-[12px] text-amber-200/90 leading-relaxed">
+            ⚠︎ Adjacent to <strong>ADR-0002</strong> (routing stays in compose labels, not Terraform). This candidate
+            is about <em>env aggregation</em>, not routing, so it doesn’t contradict the ADR — but it lives in the same
+            compose/Terraform seam the ADR deliberately keeps thin. Tread lightly; don’t let env-wiring pull routing back
+            into TF.
+          </p>
+        </div>
+      </div>
+    </div>
+  </article>
+
+  <!-- CANDIDATE D -->
+  <article class="card rounded-xl p-6 mb-10">
+    <div class="flex items-start justify-between gap-4">
+      <h3 class="text-xl font-semibold text-white">D · The duplicated <span class="mono text-slate-300">@@AUTHORIZED_KEYS@@</span> render loop</h3>
+      <span class="shrink-0 text-xs font-bold px-3 py-1 rounded-full bg-slate-500/15 text-slate-300 border border-slate-500/30">Speculative</span>
+    </div>
+    <div class="grid md:grid-cols-2 gap-6 mt-5">
+      <div>
+        <h4 class="text-xs uppercase tracking-widest text-slate-500 mb-2">Files</h4>
+        <ul class="text-sm text-slate-300 space-y-1 mono">
+          <li>homelab/scripts/build-thinkcentre-iso.sh:59</li>
+          <li>homelab/scripts/stage-pi-sd.sh:39</li>
+        </ul>
+      </div>
+      <div>
+        <p class="text-sm text-slate-300 leading-relaxed">
+          A byte-identical ~10-line marker-expansion loop lives in both staging scripts. Two callers is a real seam, not
+          a hypothetical one — but lifting it into a shared <span class="mono">lib.sh</span> with a single function
+          bumps directly against your recorded preferences (<em>colocate a lone helper; no single-function util
+          files</em>). Left speculative on purpose: revisit only if a third payload-rendering caller appears or the loop
+          grows.
+        </p>
+      </div>
+    </div>
+  </article>
+
+  <!-- TOP REC -->
+  <section class="rounded-xl p-6 border border-emerald-500/30 bg-emerald-500/[0.06]">
+    <p class="text-xs uppercase tracking-widest text-emerald-300 mb-2">Top recommendation</p>
+    <h2 class="text-2xl font-bold text-white mb-3">Start with A — the tailnet <span class="mono">devices</span> table.</h2>
+    <p class="text-sm text-slate-300 leading-relaxed max-w-3xl">
+      It’s the clearest instance of the motif and the one with an active hot spot (this branch). It gives the domain
+      concept <em>“a device on the tailnet”</em> a single home, collapses three copy-pasted key resources plus the
+      hand-kept <span class="mono">tagOwners</span> and outputs into one derivable table, and — because routes become a
+      column — dissolves the <span class="mono">HOME_LAN_CIDR</span> drift for free. B is a close second and cheaper
+      (one shell loop) with a real safety payoff; do it next. C needs care around its load-bearing ordering, and D is
+      parked against your stated preferences. Across all four, the target state is the one iris already demonstrates:
+      <strong>one descriptor in, everything derived out.</strong>
+    </p>
+    <p class="text-sm text-slate-300 mt-3">Tell me which to open and I’ll run the grilling loop — the shape of the descriptor, what sits behind the seam, and which checks become assertable.</p>
+  </section>
+
+  <p class="text-[11px] text-slate-600 mt-8">Whole-codebase review · Citadel repo · motif: the scattered descriptor.</p>
+</div>
+<script>mermaid.initialize({ startOnLoad:true, theme:'dark', securityLevel:'loose', flowchart:{ curve:'basis' } });</script>
+</body>
+</html>

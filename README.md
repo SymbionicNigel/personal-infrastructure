@@ -79,13 +79,16 @@ demand makes it urgent.
 
 ### Remote access topology (Tailscale / Cloudflare Tunnel)
 
-Today the apply host SSHes to the Dokploy instance via its raw public
-IPv4, embedded in a generated `dokploy.sshconfig`. The Dokploy dashboard
-is also reachable on `vulcan.<HOSTNAME_TLD>:443` publicly, gated only by
-Dokploy's own login. Adding Tailscale (or Cloudflare Tunnel) would let
-the firewall drop port 22 from the world, move the dashboard off the
-public internet, and remove the "raw IP in checked-in config" liability.
-Worth doing before any user-facing service exposes a real attack surface.
+As of Phase 0 (`linode/modules/tailnet/`) the tailnet exists as code and the
+Dokploy host joins it as `tag:mc-cloud` with Tailscale SSH enabled — the
+foundation for pulling access off the public internet. What remains deferred:
+the apply host still SSHes to the instance via its raw public IPv4 (embedded
+in the generated `dokploy.sshconfig`), and the Dokploy dashboard is still
+reachable on `vulcan.<HOSTNAME_TLD>:443` publicly, gated only by Dokploy's
+own login. The next steps are to route the apply host's SSH over the tailnet,
+have the firewall drop port 22 from the world, and move the dashboard off the
+public internet — removing the "raw IP in checked-in config" liability. Worth
+doing before any user-facing service exposes a real attack surface.
 
 ### Observability baseline
 
@@ -132,3 +135,5 @@ new version against the current compose stack before promotion. Fine
 while upgrades are rare; codify a "stage on a throwaway env, then
 promote" flow if the cadence ever picks up or a Dokploy release breaks
 a service.
+
+### Rename the timescaledb to something like tyche

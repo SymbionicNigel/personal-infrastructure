@@ -1,0 +1,35 @@
+#cloud-config
+# Zero-touch Ubuntu 24.04 Subiquity autoinstall for the ThinkCentre
+# (mc-compute, tag:mc-compute). Rendered onto the installer ISO by
+# homelab/scripts/build-thinkcentre-iso.sh, which substitutes the
+# @@AUTHORIZED_KEYS@@ marker with homelab/authorized_keys and stages the
+# tailnet payload under /cdrom/nocloud/. Whole-disk wipe, no prompts.
+autoinstall:
+  version: 1
+  # Claim the largest disk unconditionally — single-purpose box, LVM off.
+  storage:
+    layout:
+      name: direct
+      match:
+        size: largest
+  identity:
+    hostname: mc-compute
+    username: deploy
+    # Locked account: the box is SSH-key-only from first boot. Console/password
+    # login is disabled; "!" is not a valid hash, so no password authenticates.
+    password: "!"
+  ssh:
+    install-server: true
+    allow-pw: false
+    authorized-keys:
+@@AUTHORIZED_KEYS@@
+  # No featured server snaps.
+  snaps: []
+  # Stage the tailnet payload into the installed system so it joins on first
+  # boot (not in the ephemeral installer env). Mirrors the Pi's pi-firstrun.sh.
+  late-commands:
+    - install -m0755 /cdrom/nocloud/install-tailscale.sh /target/usr/local/sbin/install-tailscale.sh
+    - install -m0755 /cdrom/nocloud/compute-firstrun.sh /target/usr/local/sbin/compute-firstrun.sh
+    - install -m0600 /cdrom/nocloud/tailscale-authkey /target/etc/mc-compute-authkey
+    - install -m0644 /cdrom/nocloud/mc-firstrun.service /target/etc/systemd/system/mc-firstrun.service
+    - curtin in-target --target=/target -- systemctl enable mc-firstrun.service
