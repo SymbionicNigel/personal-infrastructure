@@ -2,6 +2,7 @@
 #   GPG_PRIVATE_KEY
 #   BW_CLIENTID, BW_CLIENTSECRET, BW_PASSWORD
 #   CI_PAT  (reads the private .secrets submodule)
+#   GHCR_PAT  (Dokploy's GHCR pull credential)
 
 concurrency:
   cancel-in-progress: false
@@ -34,6 +35,7 @@ jobs:
           BW_CLIENTSECRET: ${{ secrets.BW_CLIENTSECRET }}
           BW_PASSWORD: ${{ secrets.BW_PASSWORD }}
           SCRIPT: ${{ inputs.script }}
+          TF_VAR_GHCR_PAT: ${{ secrets.GHCR_PAT }}
           TF_VARS: ${{ inputs.tf_vars }}
         name: terraform apply (${{ inputs.script }})
         run: |
@@ -73,6 +75,7 @@ jobs:
           LABEL: ${{ inputs.label }}
           SCRIPT: ${{ inputs.script }}
           TF_DETECT_CHANGES: "true"
+          TF_VAR_GHCR_PAT: ${{ secrets.GHCR_PAT }}
           TF_VARS: ${{ inputs.tf_vars }}
         id: plan
         name: terraform plan (${{ inputs.script }})

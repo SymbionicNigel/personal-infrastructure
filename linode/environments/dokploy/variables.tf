@@ -76,4 +76,9 @@ variable "GHCR_PAT" {
   sensitive   = true
   nullable    = false
   description = "Fine-grained PAT (Packages: Read-only) for the ghcr.io registry."
+
+  validation {
+    condition     = length(trimspace(var.GHCR_PAT)) > 0
+    error_message = "GHCR_PAT must not be empty."
+  }
 }
