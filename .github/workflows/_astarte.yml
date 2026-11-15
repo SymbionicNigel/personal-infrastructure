@@ -26,6 +26,8 @@ jobs:
         with:
           cache-dependency-glob: astarte/uv.lock
           enable-cache: true
+          python-version: 3.14.9
+          version: 0.13.8
 
       - run: uv sync --frozen
 

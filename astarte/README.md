@@ -73,13 +73,14 @@ docker run --rm -p 8000:8000 astarte:local
 
 `docker build` with no `--target` builds the `runtime` stage by default.
 That image is multi-stage: a `uv` builder stage produces a wheel; a slim
-`python:3.13-slim` runtime stage installs that wheel as a non-root user.
+digest-pinned Python 3.14.9 runtime stage installs that wheel as a non-root user.
 Source code and build tooling do not ship in the published image.
 
 ## Production deploy
 
-The image is built and pushed by `.github/workflows/astarte.yml` on every
-push to `master` that touches `astarte/**`. The workflow then runs
+The image is validated by `.github/workflows/_astarte.yml`, called by `ci.yml`
+for changes to `astarte/**`. After application checks and the image scan pass, a push
+to `master` publishes the image. The orchestrator then runs
 `terraform apply` in `linode/environments/dokploy/` with the new git SHA
 as `TF_VAR_ASTARTE_IMAGE_TAG`, which updates the compose stack and
 triggers Dokploy to pull the new image.
