@@ -27,7 +27,7 @@ jobs:
       infra: ${{ steps.filter.outputs.infra || 'false' }}
       iris: ${{ steps.filter.outputs.iris || 'false' }}
       timescale_bootstrapped: ${{ steps.filter.outputs.timescale_bootstrapped || 'false' }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     steps:
       - if: ${{ github.event_name == 'push' }}
         uses: actions/checkout@v7
@@ -69,7 +69,7 @@ jobs:
         dokploy,
         typegen,
       ]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     steps:
       - if: ${{ contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') }}
         run: |
@@ -83,7 +83,7 @@ jobs:
     needs: [changes, astarte, iris, timescale_bootstrapped]
     outputs:
       tf_vars: ${{ steps.tags.outputs.tf_vars }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     steps:
       - env:
           ASTARTE_CHANGED: ${{ needs.changes.outputs.astarte }}
@@ -93,10 +93,11 @@ jobs:
         id: tags
         name: Collect service image tags
         run: |
+          tf_vars=$(gh variable list --repo "${GITHUB_REPOSITORY}" --json name,value \
+            --jq '.[] | select(.name | endswith("_IMAGE_TAG")) | "TF_VAR_\(.name)=\(.value)"')
           {
             echo "tf_vars<<TFVARS_EOF"
-            gh variable list --repo "${GITHUB_REPOSITORY}" --json name,value \
-              --jq '.[] | select(.name | endswith("_IMAGE_TAG")) | "TF_VAR_\(.name)=\(.value)"' || true
+            printf '%s\n' "$tf_vars"
             [ "${ASTARTE_CHANGED}" = "true" ] && echo "TF_VAR_ASTARTE_IMAGE_TAG=${GITHUB_SHA}"
             [ "${IRIS_CHANGED}" = "true" ] && echo "TF_VAR_IRIS_IMAGE_TAG=${GITHUB_SHA}"
             [ "${TIMESCALE_BOOTSTRAPPED_CHANGED}" = "true" ] && echo "TF_VAR_TIMESCALE_BOOTSTRAPPED_IMAGE_TAG=${GITHUB_SHA}"
@@ -168,7 +169,7 @@ jobs:
       POSTGRES_USER: ci_root
     if: ${{ needs.changes.outputs.astarte == 'true' || needs.changes.outputs.iris == 'true' || needs.changes.outputs.timescale_bootstrapped == 'true' }}
     needs: changes
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     services:
       postgres:
         env:
