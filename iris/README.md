@@ -16,17 +16,17 @@ served at `iris.<HOSTNAME_TLD>` in prod and `localhost:3000` in dev. The apex +
 
 ## Scripts
 
-| Script | Purpose |
-|---|---|
-| `pnpm dev` | Dev server (HMR) at `localhost:3000` |
-| `pnpm build` | Production build (`build/client` + `build/server`) |
-| `pnpm start` | Serve the production build |
-| `pnpm typecheck` | `react-router typegen && tsc` |
-| `pnpm lint` / `pnpm format` | Biome check / write |
-| `pnpm test` | Vitest run |
-| `pnpm fonts:sync` | Re-download the self-hosted fonts |
-| `pnpm typegen:api` | Regenerate `app/generated/api.d.ts` from `../astarte/openapi.json` |
-| `pnpm typegen:db` | `drizzle-kit pull` against `$DATABASE_URL` → `app/generated/{schema,relations}.ts` |
+| Script                      | Purpose                                                                            |
+| --------------------------- | ---------------------------------------------------------------------------------- |
+| `pnpm dev`                  | Dev server (HMR) at `localhost:3000`                                               |
+| `pnpm build`                | Production build (`build/client` + `build/server`)                                 |
+| `pnpm start`                | Serve the production build                                                         |
+| `pnpm typecheck`            | `react-router typegen && tsc`                                                      |
+| `pnpm lint` / `pnpm format` | Biome check / write                                                                |
+| `pnpm test`                 | Vitest run                                                                         |
+| `pnpm fonts:sync`           | Re-download the self-hosted fonts                                                  |
+| `pnpm typegen:api`          | Regenerate `app/generated/api.d.ts` from `../astarte/openapi.json`                 |
+| `pnpm typegen:db`           | `drizzle-kit pull` against `$DATABASE_URL` → `app/generated/{schema,relations}.ts` |
 
 ## Generated types
 

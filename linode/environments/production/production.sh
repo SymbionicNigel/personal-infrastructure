@@ -63,6 +63,10 @@ terraform apply -input=false -auto-approve
 # provisioned API key to the dokploy stage, syncing it into chezmoi). CI runners
 # set CI=true and are done after the apply.
 if [ -n "${CI:-}" ]; then
+    if [ -e .dokploy-api-key ]; then
+        echo "Error: A new Dokploy host was provisioned. Restore its control plane and update the managed Stage 2 API credential before continuing deployment." >&2
+        exit 1
+    fi
     exit 0
 fi
 

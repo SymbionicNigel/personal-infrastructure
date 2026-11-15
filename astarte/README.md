@@ -73,7 +73,7 @@ docker run --rm -p 8000:8000 astarte:local
 
 `docker build` with no `--target` builds the `runtime` stage by default.
 That image is multi-stage: a `uv` builder stage produces a wheel; a slim
-digest-pinned Python 3.14.9 runtime stage installs that wheel as a non-root user.
+digest-pinned Python 3.15.0 runtime stage installs that wheel as a non-root user.
 Source code and build tooling do not ship in the published image.
 
 ## Production deploy
