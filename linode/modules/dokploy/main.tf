@@ -58,16 +58,17 @@ resource "linode_instance" "dokploy_main" {
   connection {
     type        = "ssh"
     host        = one(self.ipv4)
-    user        = "root"
+    user        = var.deploy_user
     private_key = file("${path.root}/id_ed25519")
+    timeout     = "15m"
   }
 
   # Block until cloud-init finishes and the Dokploy API key sentinel exists.
   provisioner "remote-exec" {
     inline = [
-      "cloud-init status --wait || STATUS_RC=$?",
-      "test -s /root/.dokploy-api-key",
-      "exit $${STATUS_RC:-0}"
+      "set -eu",
+      "sudo -n cloud-init status --wait",
+      "sudo -n test -s /root/.dokploy-api-key"
     ]
   }
 
