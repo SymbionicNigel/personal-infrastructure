@@ -198,7 +198,7 @@ jobs:
             --set=iris_ro_password="ci-iris-ro" \
             --file=postgres/scripts/reconcile-roles.sql
 
-      - uses: astral-sh/setup-uv@v8.2.0
+      - uses: astral-sh/setup-uv@v10.4.0
         with:
           enable-cache: true
           python-version: 3.14.9
