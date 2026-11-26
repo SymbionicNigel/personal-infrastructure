@@ -24,13 +24,13 @@ output "dokploy_backups_region" {
 }
 
 output "dokploy_backups_access_key" {
-  value       = module.acme_backup.access_key
+  value       = linode_object_storage_key.infra_backups.access_key
   sensitive   = true
   description = "Access key ID for Dokploy native backups"
 }
 
 output "dokploy_backups_secret_key" {
-  value       = module.acme_backup.secret_key
+  value       = linode_object_storage_key.infra_backups.secret_key
   sensitive   = true
   description = "Secret access key for Dokploy native backups"
 }

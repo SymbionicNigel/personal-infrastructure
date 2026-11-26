@@ -107,7 +107,7 @@ jobs:
   # Render + deploy the compose stack from the collected tags, after the host
   # converges. Gated on collect (which carries the event/change conditions).
   dokploy:
-    if: ${{ !cancelled() && !contains(needs.*.result, 'failure') && needs.collect.result == 'success' && (needs.typegen.result == 'success' || needs.typegen.result == 'skipped') }}
+    if: ${{ !cancelled() && needs.prod.result == 'success' && needs.collect.result == 'success' && (needs.typegen.result == 'success' || needs.typegen.result == 'skipped') }}
     needs: [collect, prod, typegen]
     secrets: inherit
     uses: ./.github/workflows/_terraform-apply.yml

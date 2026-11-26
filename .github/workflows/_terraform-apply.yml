@@ -15,12 +15,14 @@ jobs:
     needs: plan
     runs-on: ubuntu-26.04
     steps:
-      - uses: actions/checkout@v7
+      - &checkout
+        uses: actions/checkout@v7
         with:
           persist-credentials: false
           ref: ${{ inputs.ref }}
 
-      - name: Setup (submodules, GPG, chezmoi, Terraform)
+      - &setup
+        name: Setup (submodules, GPG, chezmoi, Terraform)
         uses: ./.github/actions/tf-setup
         with:
           bw_clientid: ${{ secrets.BW_CLIENTID }}
@@ -30,7 +32,7 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
 
-      - env:
+      - env: &apply_env
           BW_CLIENTID: ${{ secrets.BW_CLIENTID }}
           BW_CLIENTSECRET: ${{ secrets.BW_CLIENTSECRET }}
           BW_PASSWORD: ${{ secrets.BW_PASSWORD }}
@@ -38,7 +40,7 @@ jobs:
           TF_VAR_GHCR_PAT: ${{ secrets.GHCR_PAT }}
           TF_VARS: ${{ inputs.tf_vars }}
         name: terraform apply (${{ inputs.script }})
-        run: |
+        run: &apply_command |
           if [ -n "$TF_VARS" ]; then
             while IFS= read -r line; do
               [ -n "$line" ] || continue
@@ -49,26 +51,15 @@ jobs:
         working-directory: ${{ inputs.working_directory }}
 
   plan:
+    if: ${{ inputs.plan_only || inputs.label != 'dokploy' }}
     outputs:
       has_changes: ${{ steps.plan.outputs.has_changes }}
     runs-on: ubuntu-26.04
     steps:
-      - uses: actions/checkout@v7
-        with:
-          persist-credentials: false
-          ref: ${{ inputs.ref }}
-
-      - name: Setup (submodules, GPG, chezmoi, Terraform)
-        uses: ./.github/actions/tf-setup
-        with:
-          bw_clientid: ${{ secrets.BW_CLIENTID }}
-          bw_clientsecret: ${{ secrets.BW_CLIENTSECRET }}
-          bw_password: ${{ secrets.BW_PASSWORD }}
-          ci_pat: ${{ secrets.CI_PAT }}
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
-
-      - env:
+      - *checkout
+      - *setup
+      - &plan
+        env:
           BW_CLIENTID: ${{ secrets.BW_CLIENTID }}
           BW_CLIENTSECRET: ${{ secrets.BW_CLIENTSECRET }}
           BW_PASSWORD: ${{ secrets.BW_PASSWORD }}
@@ -110,6 +101,23 @@ jobs:
             echo "::error::terraform plan failed (exit $rc)"
             exit "$rc"
           fi
+        working-directory: ${{ inputs.working_directory }}
+
+  dokploy:
+    name: Deploy Dokploy
+    if: ${{ inputs.label == 'dokploy' && !inputs.plan_only }}
+    environment:
+      name: dokploy
+      url: https://github.com/${{ github.repository }}/blob/${{ github.sha }}/docs/guides/dokploy-recovery.md
+    runs-on: ubuntu-26.04
+    steps:
+      - *checkout
+      - *setup
+      - *plan
+      - name: terraform apply (${{ inputs.script }})
+        if: ${{ steps.plan.outputs.has_changes == 'true' }}
+        env: *apply_env
+        run: *apply_command
         working-directory: ${{ inputs.working_directory }}
 
 name: _terraform-apply

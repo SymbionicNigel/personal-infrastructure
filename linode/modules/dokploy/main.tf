@@ -8,7 +8,20 @@ terraform {
       source  = "hashicorp/random"
       version = "~> 3.9"
     }
+    null = {
+      source  = "hashicorp/null"
+      version = "~> 3.3"
+    }
+    time = {
+      source  = "hashicorp/time"
+      version = "~> 0.14"
+    }
   }
+}
+
+locals {
+  instance_ip     = one(linode_instance.dokploy_main.ipv4)
+  resource_prefix = replace(var.HOSTNAME_TLD, ".", "-")
 }
 
 resource "random_password" "dokploy_main_root_pass" {
@@ -63,7 +76,6 @@ resource "linode_instance" "dokploy_main" {
     timeout     = "15m"
   }
 
-  # Block until cloud-init finishes and the Dokploy API key sentinel exists.
   provisioner "remote-exec" {
     inline = [
       "set -eu",
@@ -72,7 +84,6 @@ resource "linode_instance" "dokploy_main" {
     ]
   }
 
-  # Retrieve the API key to a local file for Stage 2
   provisioner "local-exec" {
     interpreter = ["bash", "-c"]
     command     = "ssh -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile=/dev/null -i ${path.root}/id_ed25519 ${var.deploy_user}@${one(self.ipv4)} sudo cat /root/.dokploy-api-key > ${path.root}/.dokploy-api-key"

@@ -48,34 +48,31 @@ cd linode/environments/production && bash production.sh
 Stands up everything the host needs to exist before Dokploy can be talked
 to as a Terraform provider: the Linode instance, firewall, DNS zone,
 wildcard records, ACME DNS-01 config, and the encrypted `acme.json` backup
-job. The control-plane database backup is Dokploy-native and configured in
-Stage 2.
+job. The native backup schedule is configured in Stage 2.
 DNS-01 is configured up-front (rather than relying on Dokploy's
 default HTTP-01) so the dashboard's first cert issuance and any future
 wildcard certs don't depend on port-80 reachability or DNS propagation
 ordering.
 
 The dashboard is bound to `<DASHBOARD_SUBDOMAIN>.<HOSTNAME_TLD>` by calling
-the Dokploy admin API over SSH from the apply host, using the API key that
-cloud-init wrote to `/root/.dokploy-api-key`. The admin API is loopback-only
+the Dokploy admin API over SSH from the apply host, using the host's
+`/root/.dokploy-api-key`. Bootstrap creates this key. The admin API is loopback-only
 on the instance, which is why the call tunnels over SSH rather than going
 through the provider.
 
 `production.sh` also writes a generated `dokploy.sshconfig` + `id_ed25519`
 keypair and idempotently appends an `Include` line to `~/.ssh/config` so
-`ssh dokploy-prod` works from the apply host. The instance's raw IP is
+`ssh dokploy-prod` works from the apply host. Its host-key alias includes the
+instance ID, so a replacement reusing the same IP has a distinct known-host
+entry without deleting the old one. The instance's raw IP is
 embedded there today; a bastion / Tailscale / Cloudflare Tunnel endpoint
 is the intended replacement (see TODO in `base.tf`).
 
-**In CI:** the `infra` workflow runs `production.sh` (on `workflow_dispatch`
-and on changes to `linode/environments/production/**`, `linode/modules/**`,
-or the `.secrets` submodule pointer). There it stops after the Terraform
-apply — the local-developer bootstrap above (the `~/.ssh/config` Include and
-regenerating + chezmoi-syncing the dokploy stage's `.env` from the
-provisioned API key) is skipped via a `CI=true` guard. That handoff is
-interactive (`chezmoi merge`) and commits into the `.secrets` submodule, so
-it stays local-only — needed only when the instance is re-provisioned and
-the Dokploy API key changes.
+**In CI:** Production runs first. Deployments wait for approval on the `dokploy`
+environment before Stage 2 plans and applies. PR plans are read-only and do not
+require deployment approval. If Production replaces the VM, follow the
+[recovery playbook](../docs/guides/dokploy-recovery.md) before approving.
+The local SSH-config Include and initial chezmoi bootstrap remain local-only.
 
 ### Stage 2 — Dokploy
 
@@ -94,6 +91,10 @@ manual deploy, export it (or set it in `linode/environments/dokploy/.env`) befor
 `dokploy.sh`. The `latest` default is intentionally unused so deploys are
 explicit and reproducible.
 
+Stage 2 also reads the single Docker Swarm node's identity from Dokploy.
+A replacement node reruns registry login, environment publication, deployment
+and verification even when image tags and configuration are unchanged.
+
 ### Control-plane backup/restore
 
 The control-plane backup is Dokploy's native Web Server backup: a nightly
@@ -102,12 +103,23 @@ The control-plane backup is Dokploy's native Web Server backup: a nightly
 `module.control_plane_backup` (dokploy env) on the shared `linode-object-storage`
 destination, schedule `0 4 * * *` UTC.
 
-Restore is an operator action in the panel (the API restore path is a websocket
-subscription, not curl-friendly): **Web Server → Backups**, select the
-`webserver-backup-<ts>.zip` from the destination, and **Restore**. Dokploy
-replaces `/etc/dokploy` and the `dokploy` database with the archive contents and
-restarts. No client-side decryption is needed — these archives are not GPG
-encrypted; confidentiality relies on bucket-side encryption.
+Use the [VM recovery playbook](../docs/guides/dokploy-recovery.md) to restore
+through Dokploy's UI and resume CI.
+
+The shared backup access key is owned alongside the bucket in Production.
+The instance module receives the shared backup configuration for ACME recovery.
+Stage 2 uses the same bucket/key for native backups. ACME and DNS-01 resources live alongside the VM and follow
+its replacement lifecycle directly, without an instance-identity proxy or
+repeated identity triggers. Terraform `moved` blocks in
+`environments/production/moved.tf` preserve the existing key and host
+configuration state. Routing depends on completion of the instance module,
+including ACME restoration.
+
+The application database is recreatable; no application-data restore is
+required. No VM snapshot or second backup system is involved. Retain the source
+archive until a post-restore backup is proven usable, including stored
+credential decryption. Native archives are not GPG-encrypted; the separate
+ACME backup is.
 
 ### GHCR pull credential
 
@@ -116,8 +128,8 @@ private GHCR namespace, so the Dokploy host needs `docker login`
 credentials before a deploy can pull. This is owned by the **dokploy**
 environment via `terraform_data.ghcr_registry`, which calls Dokploy's
 `registry.create`/`registry.update` — Dokploy then runs `docker login
-ghcr.io` on the host (writing `/root/.docker/config.json`). Re-runs only
-when the PAT changes, so rotation is hands-off.
+ghcr.io` on the host (writing `/root/.docker/config.json`). Re-runs when the
+credential or Docker node changes, so rotation and replacement are automatic.
 
 Setup:
 
@@ -181,7 +193,7 @@ state.
 Object Storage credentials are deliberately not threaded through `.env` for
 provider auth: `provider "linode"` is configured with `obj_use_temp_keys`,
 which mints short-lived obj keys per apply. The only long-lived obj key in
-the system is the infra-backups key (acme-backup module), shared by the
+the system is the infra-backups key (Production root), shared by the
 host's `acme.json` backup job and Dokploy's native backup destination. It is
 not rotated: Dokploy stores the destination credentials statically and can't
 track a rotation, so the key is kept stable.

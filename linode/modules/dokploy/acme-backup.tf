@@ -1,43 +1,21 @@
-terraform {
-  required_providers {
-    linode = {
-      source  = "linode/linode"
-      version = "4.9.0"
-    }
-    null = {
-      source  = "hashicorp/null"
-      version = "~> 3.3"
-    }
-  }
-}
-
-resource "linode_object_storage_key" "infra_backups" {
-  label = "${var.resource_prefix}-infra-backups-rw"
-
-  bucket_access {
-    bucket_name = var.bucket_name
-    region      = var.region
-    permissions = "read_write"
-  }
-}
-
-
 # Pushes /root/.s3cfg + /root/.acme-backup.env + the gpg public key to the
 # host AFTER cloud-init completes. Keeping these out of user_data avoids
 # exposure via the Linode metadata service.
 resource "null_resource" "configure_acme_backup" {
-  depends_on = [linode_object_storage_key.infra_backups]
-
   triggers = {
-    instance_ip = var.instance_ip
-    recipient   = var.gpg_recipient
-    access_key  = linode_object_storage_key.infra_backups.access_key
-    endpoint    = var.endpoint
+    instance_ip = local.instance_ip
+    recipient   = var.backup.gpg_recipient
+    access_key  = var.backup.access_key
+    endpoint    = var.backup.endpoint
+  }
+
+  lifecycle {
+    replace_triggered_by = [linode_instance.dokploy_main.id]
   }
 
   connection {
     type        = "ssh"
-    host        = var.instance_ip
+    host        = local.instance_ip
     user        = var.deploy_user
     private_key = file("${path.root}/id_ed25519")
   }
@@ -46,10 +24,10 @@ resource "null_resource" "configure_acme_backup" {
     destination = "/home/${var.deploy_user}/.s3cfg"
     content     = <<-EOT
       [default]
-      access_key = ${linode_object_storage_key.infra_backups.access_key}
-      secret_key = ${linode_object_storage_key.infra_backups.secret_key}
-      host_base = ${var.endpoint}
-      host_bucket = %(bucket)s.${var.endpoint}
+      access_key = ${var.backup.access_key}
+      secret_key = ${var.backup.secret_key}
+      host_base = ${var.backup.endpoint}
+      host_bucket = %(bucket)s.${var.backup.endpoint}
       use_https = True
       signature_v2 = False
     EOT
@@ -57,7 +35,7 @@ resource "null_resource" "configure_acme_backup" {
 
   provisioner "file" {
     destination = "/home/${var.deploy_user}/.acme-backup.env"
-    content     = "BACKUP_BUCKET=${var.bucket_name}\nGPG_RECIPIENT=${var.gpg_recipient}\n"
+    content     = "BACKUP_BUCKET=${var.backup.bucket}\nGPG_RECIPIENT=${var.backup.gpg_recipient}\n"
   }
 
   provisioner "remote-exec" {
@@ -77,16 +55,16 @@ resource "null_resource" "configure_acme_backup" {
     interpreter = ["bash", "-c"]
     command     = <<-EOT
       set -euo pipefail
-      if ! gpg --list-keys "${var.gpg_recipient}" >/dev/null 2>&1; then
-        echo "ERROR: gpg public key for '${var.gpg_recipient}' not found in local keyring." >&2
+      if ! gpg --list-keys "${var.backup.gpg_recipient}" >/dev/null 2>&1; then
+        echo "ERROR: gpg public key for '${var.backup.gpg_recipient}' not found in local keyring." >&2
         echo "Import it before applying: gpg --import <pubkey-file>" >&2
         exit 1
       fi
-      gpg --export -a "${var.gpg_recipient}" \
+      gpg --export -a "${var.backup.gpg_recipient}" \
         | ssh -o StrictHostKeyChecking=accept-new \
               -o UserKnownHostsFile=/dev/null \
               -i ${path.root}/id_ed25519 \
-              ${var.deploy_user}@${var.instance_ip} \
+              ${var.deploy_user}@${local.instance_ip} \
               'sudo gpg --batch --import'
     EOT
   }
@@ -96,15 +74,15 @@ resource "null_resource" "configure_acme_backup" {
 # per-host LE issuance is triggered. Decrypts on the deploy machine and pipes
 # plaintext over SSH directly into install(1) — cert plaintext never lands
 # on the deploy disk.
-#
-# Triggers: instance_ip only. Restore does NOT re-run on backup change —
-# re-restoring would clobber a live acme.json with stale data.
-# To force a restore: terraform apply -replace='module.acme_backup.null_resource.restore_acme'
 resource "null_resource" "restore_acme" {
   depends_on = [null_resource.configure_acme_backup]
 
   triggers = {
-    instance_ip = var.instance_ip
+    instance_ip = local.instance_ip
+  }
+
+  lifecycle {
+    replace_triggered_by = [linode_instance.dokploy_main.id]
   }
 
   provisioner "local-exec" {
@@ -115,28 +93,30 @@ resource "null_resource" "restore_acme" {
       CFG=$(mktemp); trap 'rm -f "$CFG"' EXIT
       {
         printf '[default]\n'
-        printf 'access_key = %s\n' '${linode_object_storage_key.infra_backups.access_key}'
-        printf 'secret_key = %s\n' '${linode_object_storage_key.infra_backups.secret_key}'
-        printf 'host_base = %s\n' '${var.endpoint}'
-        printf 'host_bucket = %%(bucket)s.%s\n' '${var.endpoint}'
+        printf 'access_key = %s\n' '${var.backup.access_key}'
+        printf 'secret_key = %s\n' '${var.backup.secret_key}'
+        printf 'host_base = %s\n' '${var.backup.endpoint}'
+        printf 'host_bucket = %%(bucket)s.%s\n' '${var.backup.endpoint}'
         printf 'use_https = True\n'
         printf 'signature_v2 = False\n'
       } > "$CFG"
       chmod 600 "$CFG"
 
-      if ! s3cmd -c "$CFG" info "s3://${var.bucket_name}/acme.json.gpg" >/dev/null 2>&1; then
-        echo "[restore_acme] no backup at s3://${var.bucket_name}/acme.json.gpg — skipping"
+      archive="s3://${var.backup.bucket}/acme.json.gpg"
+      listing=$(s3cmd -c "$CFG" ls "$archive")
+      if [ -z "$listing" ]; then
+        echo "[restore_acme] no backup at s3://${var.backup.bucket}/acme.json.gpg — skipping"
         exit 0
       fi
 
       echo "[restore_acme] restoring acme.json from backup"
-      s3cmd -c "$CFG" get --force "s3://${var.bucket_name}/acme.json.gpg" - \
-        | gpg --batch --decrypt \
-        | ssh -o StrictHostKeyChecking=accept-new \
+      acme=$(s3cmd -c "$CFG" get --force "$archive" - | gpg --batch --decrypt)
+      printf '%s' "$acme" \
+        | ssh -o BatchMode=yes -o StrictHostKeyChecking=accept-new \
               -o UserKnownHostsFile=/dev/null \
               -i ${path.root}/id_ed25519 \
-              ${var.deploy_user}@${var.instance_ip} \
-              "sudo install -m 0600 -o root -g root /dev/stdin /etc/dokploy/traefik/dynamic/acme.json && sudo docker restart dokploy-traefik >/dev/null"
+              ${var.deploy_user}@${local.instance_ip} \
+              "sudo -n install -m 0600 -o root -g root /dev/stdin /etc/dokploy/traefik/dynamic/acme.json"
 
       echo "[restore_acme] done"
     EOT
