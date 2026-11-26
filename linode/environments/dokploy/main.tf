@@ -290,15 +290,8 @@ locals {
   ]), null)
 }
 
-# Create-or-update the ghcr registry. Either path runs `docker login ghcr.io` on
-# the host (Dokploy sets registryType=cloud → execAsync). triggers_replace on the
-# cred hash means a PAT rotation re-runs the login, preserving today's behaviour.
 resource "terraform_data" "ghcr_registry" {
-  triggers_replace = sha256(join("|", [var.GHCR_OWNER, var.GHCR_PAT]))
-
-  lifecycle {
-    replace_triggered_by = [terraform_data.host.triggers_replace.instance_id]
-  }
+  triggers_replace = sha256(join("|", [terraform_data.host.triggers_replace.instance_id, var.GHCR_OWNER, var.GHCR_PAT]))
 
   provisioner "local-exec" {
     environment = {
