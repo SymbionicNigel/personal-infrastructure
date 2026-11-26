@@ -2,6 +2,11 @@
 
 # Intended to be ran from /linode/environments/production
 set -euo pipefail
+if (( $# )); then
+    echo "Usage: production.sh" >&2
+    exit 2
+fi
+
 set -a
 # shellcheck source=/dev/null
 source .env
@@ -32,13 +37,18 @@ add_or_merge_to_chezmoi() {
     fi
 }
 
+args=()
+if [ -n "${TF_TARGET:-}" ]; then
+    args+=("-target=$TF_TARGET")
+fi
+
 terraform init -backend-config=backend.hcl
 
 # TF_DETECT_CHANGES=true (CI plan job) runs plan with -detailed-exitcode and
 # propagates terraform's rc (0 none, 2 changes, 1 error) for the apply gate.
 if [ "${TF_DETECT_CHANGES:-false}" = "true" ]; then
     set +e
-    terraform plan -input=false -detailed-exitcode
+    terraform plan -input=false -detailed-exitcode "${args[@]}"
     rc=$?
     set -e
     exit "$rc"
@@ -46,23 +56,16 @@ fi
 
 # TF_PLAN_ONLY=true is a read-only plan for local use; skips apply + bootstrap.
 if [ "${TF_PLAN_ONLY:-false}" = "true" ]; then
-    terraform plan -input=false
+    terraform plan -input=false "${args[@]}"
     exit 0
 fi
 
-# TF_TARGET=<address> applies a single resource (with its dependencies) and skips
-# the developer bootstrap. Used for surgical steps like pushing only the tailnet
-# ACL ahead of re-scoping the OAuth client.
-if [ -n "${TF_TARGET:-}" ]; then
-    terraform apply -input=false -auto-approve -target="$TF_TARGET"
-    exit 0
-fi
-terraform apply -input=false -auto-approve
+terraform apply -input=false -auto-approve "${args[@]}"
 
 # Remaining steps are local-developer bootstrap (SSH config Include, handing the
 # provisioned API key to the dokploy stage, syncing it into chezmoi). CI runners
 # set CI=true and are done after the apply.
-if [ -n "${CI:-}" ]; then
+if [ -n "${CI:-}${TF_TARGET:-}" ]; then
     exit 0
 fi
 
@@ -83,13 +86,10 @@ fi
 
 API_KEY_FILE="./.dokploy-api-key"
 
-if [ ! -f "$API_KEY_FILE" ]; then
-    echo "Error: API key file not found at $API_KEY_FILE"
-    echo "The provisioner may not have run (instance already existed)."
-    echo "To force re-provisioning: terraform taint module.dokploy-instance.linode_instance.dokploy_main"
+if [ ! -s "$API_KEY_FILE" ]; then
+    echo "Error: Provisioning API key was not retrieved at $API_KEY_FILE." >&2
     exit 1
 fi
-
 API_KEY=$(cat "$API_KEY_FILE")
 
 # Backup-destination creds for the dokploy stage are this env's outputs (the

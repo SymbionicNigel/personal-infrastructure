@@ -159,6 +159,10 @@ resource "terraform_data" "compose_env" {
 resource "terraform_data" "redeploy" {
   triggers_replace = sha256("${local.compose_content}\n${jsonencode(local.compose_env)}")
 
+  lifecycle {
+    replace_triggered_by = [terraform_data.ghcr_registry]
+  }
+
   provisioner "local-exec" {
     environment = {
       DOKPLOY_API_KEY = var.DOKPLOY_API_KEY
@@ -182,11 +186,10 @@ resource "terraform_data" "redeploy" {
 # requiring every expected service to hold "running" state for a few
 # consecutive samples. Failure here fails the apply, making "deploy
 # success" mean what it says.
-#
-# Keyed on the same trigger as redeploy so the verify runs exactly
-# once per deploy attempt.
 resource "terraform_data" "deploy_verify" {
-  triggers_replace = terraform_data.redeploy.triggers_replace
+  lifecycle {
+    replace_triggered_by = [terraform_data.redeploy]
+  }
 
   provisioner "local-exec" {
     environment = {
@@ -197,8 +200,6 @@ resource "terraform_data" "deploy_verify" {
     }
     command = "${path.module}/verify-deploy.sh"
   }
-
-  depends_on = [terraform_data.redeploy]
 }
 
 # Shared S3 destination for Dokploy's native backups. Credentials are the
@@ -289,11 +290,8 @@ locals {
   ]), null)
 }
 
-# Create-or-update the ghcr registry. Either path runs `docker login ghcr.io` on
-# the host (Dokploy sets registryType=cloud → execAsync). triggers_replace on the
-# cred hash means a PAT rotation re-runs the login, preserving today's behaviour.
 resource "terraform_data" "ghcr_registry" {
-  triggers_replace = sha256(join("|", [var.GHCR_OWNER, var.GHCR_PAT]))
+  triggers_replace = sha256(join("|", [terraform_data.host.triggers_replace.instance_id, var.GHCR_OWNER, var.GHCR_PAT]))
 
   provisioner "local-exec" {
     environment = {

@@ -48,8 +48,8 @@ variable "DASHBOARD_SUBDOMAIN" {
 variable "DOKPLOY_VERSION" {
   type        = string
   nullable    = false
-  default     = "v0.31.2"
-  description = "Pinned Dokploy release tag for new host provisioning. Override with TF_VAR_DOKPLOY_VERSION. Changing this value does not upgrade an existing installation."
+  default     = "v0.31.4"
+  description = "Dokploy release tag embedded in cloud-init. Changing it replaces the VM."
 }
 
 variable "GPG_RECIPIENT" {

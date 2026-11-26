@@ -107,7 +107,7 @@ jobs:
   # Render + deploy the compose stack from the collected tags, after the host
   # converges. Gated on collect (which carries the event/change conditions).
   dokploy:
-    if: ${{ !cancelled() && !contains(needs.*.result, 'failure') && needs.collect.result == 'success' && (needs.typegen.result == 'success' || needs.typegen.result == 'skipped') }}
+    if: ${{ !cancelled() && needs.prod.result == 'success' && needs.collect.result == 'success' && (needs.typegen.result == 'success' || needs.typegen.result == 'skipped') }}
     needs: [collect, prod, typegen]
     secrets: inherit
     uses: ./.github/workflows/_terraform-apply.yml
@@ -176,7 +176,7 @@ jobs:
           POSTGRES_DB: app
           POSTGRES_PASSWORD: ci-superuser
           POSTGRES_USER: ci_root
-        image: timescale/timescaledb:2.32.0-pg17@sha256:6a6b7d7a346d7c6be03a310c240706f3bbc6d7adbdf3fbc07823570b34337f5e
+        image: timescale/timescaledb:2.32.1-pg17@sha256:2f5e6969faa5cd7f4b075d65f124e30dc50d456b7b807e5c1acd9d51ba7df51c
         options: >-
           --health-cmd "pg_isready -U ci_root -d app"
           --health-interval 5s
@@ -198,11 +198,12 @@ jobs:
             --set=iris_ro_password="ci-iris-ro" \
             --file=postgres/scripts/reconcile-roles.sql
 
-      - uses: astral-sh/setup-uv@v8.2.0
+      - uses: astral-sh/setup-uv@v10.4.0
         with:
           enable-cache: true
-          python-version: 3.14.9
-          version: 0.13.8
+          python-version: 3.15.2
+          require-checksums: true
+          version: 0.13.9
 
       - name: Install astarte deps
         run: uv sync --frozen

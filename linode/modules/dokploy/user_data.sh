@@ -49,6 +49,19 @@ F2B_EOF
 
 systemctl enable --now fail2ban.service
 
+adduser --disabled-password --gecos "" ${DEPLOY_USER}
+usermod -aG sudo ${DEPLOY_USER}
+cat > /etc/sudoers.d/${DEPLOY_USER} <<'SUDO_EOF'
+${DEPLOY_USER} ALL=(ALL) NOPASSWD:ALL
+SUDO_EOF
+chmod 440 /etc/sudoers.d/${DEPLOY_USER}
+visudo -c -f /etc/sudoers.d/${DEPLOY_USER}
+mkdir -p /home/${DEPLOY_USER}/.ssh
+cp /root/.ssh/authorized_keys /home/${DEPLOY_USER}/.ssh/authorized_keys
+chown -R ${DEPLOY_USER}:${DEPLOY_USER} /home/${DEPLOY_USER}/.ssh
+chmod 700 /home/${DEPLOY_USER}/.ssh
+chmod 600 /home/${DEPLOY_USER}/.ssh/authorized_keys
+
 # Function to robustly set SSH config parameters
 set_ssh_config() {
     local key="$1"
@@ -80,15 +93,6 @@ timedatectl set-timezone America/New_York
 # Configure hostname
 hostnamectl set-hostname "dokploy-main.${HOSTNAME_TLD}"
 
-# Create non-root user and add public key
-adduser --disabled-password --gecos "" ${DEPLOY_USER}
-usermod -aG sudo ${DEPLOY_USER}
-mkdir -p /home/${DEPLOY_USER}/.ssh
-cp /root/.ssh/authorized_keys /home/${DEPLOY_USER}/.ssh/authorized_keys
-chown -R ${DEPLOY_USER}:${DEPLOY_USER} /home/${DEPLOY_USER}/.ssh
-chmod 700 /home/${DEPLOY_USER}/.ssh
-chmod 600 /home/${DEPLOY_USER}/.ssh/authorized_keys
-
 install -m 0755 -d /etc/apt/keyrings
 curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
 DOCKER_KEY_FINGERPRINT=$(gpg --show-keys --with-colons /etc/apt/keyrings/docker.asc \
@@ -109,14 +113,6 @@ apt-mark hold docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-
 
 systemctl enable docker
 usermod -aG docker ${DEPLOY_USER}
-
-# Passwordless sudo so terraform provisioners can run privileged commands
-# without an interactive prompt. Scope narrow: only this one user.
-cat > /etc/sudoers.d/${DEPLOY_USER} <<'SUDO_EOF'
-${DEPLOY_USER} ALL=(ALL) NOPASSWD:ALL
-SUDO_EOF
-chmod 440 /etc/sudoers.d/${DEPLOY_USER}
-visudo -c -f /etc/sudoers.d/${DEPLOY_USER}
 
 export DOKPLOY_VERSION="${DOKPLOY_VERSION}"
 curl -fsSL "https://github.com/Dokploy/dokploy/releases/download/$DOKPLOY_VERSION/install.sh" | sh

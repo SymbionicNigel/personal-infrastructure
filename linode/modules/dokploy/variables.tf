@@ -10,6 +10,13 @@ variable "HOSTNAME_TLD" {
   description = "The Hostname and TLD used to route to the main application"
 }
 
+variable "EMAIL_ADDRESS" {
+  type        = string
+  sensitive   = true
+  nullable    = false
+  description = "Email used by Traefik for certificate issuance."
+}
+
 variable "TAGS" {
   type        = set(string)
   nullable    = false
@@ -41,4 +48,17 @@ variable "deploy_user" {
   nullable    = false
   description = "Non-root sudoer created by cloud-init and used for SSH-tunneled Dokploy admin calls. Home directory is /home/<deploy_user>."
   default     = "deploy"
+}
+
+variable "backup" {
+  type = object({
+    bucket        = string
+    endpoint      = string
+    access_key    = string
+    secret_key    = string
+    gpg_recipient = string
+  })
+  sensitive   = true
+  nullable    = false
+  description = "Shared backup destination and ACME encryption recipient."
 }

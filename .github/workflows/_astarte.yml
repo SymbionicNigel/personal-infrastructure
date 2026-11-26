@@ -22,12 +22,13 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - uses: astral-sh/setup-uv@v8.2.0
+      - uses: astral-sh/setup-uv@v10.4.0
         with:
           cache-dependency-glob: astarte/uv.lock
           enable-cache: true
-          python-version: 3.14.9
-          version: 0.13.8
+          python-version: 3.15.2
+          require-checksums: true
+          version: 0.13.9
 
       - run: uv sync --frozen
 

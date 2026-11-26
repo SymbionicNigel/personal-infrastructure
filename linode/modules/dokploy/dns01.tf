@@ -1,20 +1,3 @@
-terraform {
-  required_providers {
-    linode = {
-      source  = "linode/linode"
-      version = "4.9.0"
-    }
-    null = {
-      source  = "hashicorp/null"
-      version = "~> 3.3"
-    }
-    time = {
-      source  = "hashicorp/time"
-      version = "~> 0.14"
-    }
-  }
-}
-
 # Rotate the DNS-scoped Linode token every 365 days. Long cadence because the
 # blast radius is bounded (domains:read_write only) and replacing the token
 # forces a re-push to the instance via configure.
@@ -34,7 +17,7 @@ resource "terraform_data" "dns_token_rotation" {
 # annual rotation, narrow scope, and the master TF_VAR_LINODE_TOKEN never
 # leaving the deploy machine.
 resource "linode_token" "dns" {
-  label  = "${var.resource_prefix}-traefik-dns"
+  label  = "${local.resource_prefix}-traefik-dns"
   scopes = "domains:read_write"
 
   lifecycle {
@@ -80,7 +63,7 @@ locals {
     certificatesResolvers:
       letsencrypt:
         acme:
-          email: ${var.email}
+          email: ${var.EMAIL_ADDRESS}
           storage: /etc/dokploy/traefik/dynamic/acme.json
           dnsChallenge:
             provider: linode
@@ -97,14 +80,20 @@ locals {
 # writeTraefikSetup, which recreates the container — picking up both the new
 # YAML and the new env atomically.
 resource "null_resource" "configure_main" {
+  depends_on = [null_resource.restore_acme]
+
   triggers = {
-    instance_ip = var.instance_ip
+    instance_ip = local.instance_ip
     yaml_hash   = sha256(local.traefik_yaml)
+  }
+
+  lifecycle {
+    replace_triggered_by = [null_resource.restore_acme]
   }
 
   connection {
     type        = "ssh"
-    host        = var.instance_ip
+    host        = local.instance_ip
     user        = var.deploy_user
     private_key = file("${path.root}/id_ed25519")
   }
@@ -147,14 +136,18 @@ resource "null_resource" "configure" {
   depends_on = [linode_token.dns, null_resource.configure_main]
 
   triggers = {
-    instance_ip = var.instance_ip
-    email       = var.email
+    instance_ip = local.instance_ip
+    email       = var.EMAIL_ADDRESS
     token       = sha256(linode_token.dns.token) # hash so the secret isn't in plan output
+  }
+
+  lifecycle {
+    replace_triggered_by = [null_resource.configure_main]
   }
 
   connection {
     type        = "ssh"
-    host        = var.instance_ip
+    host        = local.instance_ip
     user        = var.deploy_user
     private_key = file("${path.root}/id_ed25519")
   }
@@ -165,7 +158,7 @@ resource "null_resource" "configure" {
   provisioner "file" {
     destination = "/home/${var.deploy_user}/.dokploy-traefik-dns01.env"
     content     = <<-EOT
-      TRAEFIK_CERTIFICATESRESOLVERS_LETSENCRYPT_ACME_EMAIL=${var.email}
+      TRAEFIK_CERTIFICATESRESOLVERS_LETSENCRYPT_ACME_EMAIL=${var.EMAIL_ADDRESS}
       TRAEFIK_CERTIFICATESRESOLVERS_LETSENCRYPT_ACME_STORAGE=/etc/dokploy/traefik/dynamic/acme.json
       TRAEFIK_CERTIFICATESRESOLVERS_LETSENCRYPT_ACME_DNSCHALLENGE=true
       TRAEFIK_CERTIFICATESRESOLVERS_LETSENCRYPT_ACME_DNSCHALLENGE_PROVIDER=linode
@@ -220,9 +213,9 @@ locals {
           defaultGeneratedCert:
             resolver: letsencrypt
             domain:
-              main: ${var.hostname_tld}
+              main: ${var.HOSTNAME_TLD}
               sans:
-                - "*.${var.hostname_tld}"
+                - "*.${var.HOSTNAME_TLD}"
   YAML
 }
 
@@ -234,13 +227,17 @@ resource "null_resource" "configure_dynamic" {
   depends_on = [null_resource.configure]
 
   triggers = {
-    instance_ip = var.instance_ip
+    instance_ip = local.instance_ip
     config_hash = sha256("/etc/dokploy/traefik/dynamic/wildcard-tls.yml:${local.wildcard_dynamic_yaml}")
+  }
+
+  lifecycle {
+    replace_triggered_by = [null_resource.configure]
   }
 
   connection {
     type        = "ssh"
-    host        = var.instance_ip
+    host        = local.instance_ip
     user        = var.deploy_user
     private_key = file("${path.root}/id_ed25519")
   }

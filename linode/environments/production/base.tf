@@ -2,7 +2,7 @@ terraform {
   required_providers {
     linode = {
       source  = "linode/linode"
-      version = "4.9.0"
+      version = "4.10.0"
     }
     null = {
       source  = "hashicorp/null"
@@ -14,7 +14,7 @@ terraform {
     }
     tailscale = {
       source  = "tailscale/tailscale"
-      version = "~> 0.21"
+      version = "~> 0.30"
     }
   }
 
@@ -49,12 +49,20 @@ module "dokploy-instance" {
   source = "../../modules/dokploy"
 
   region                 = var.REGION
+  EMAIL_ADDRESS          = var.EMAIL_ADDRESS
   HOSTNAME_TLD           = var.HOSTNAME_TLD
   TAGS                   = local.TAGS
   DOKPLOY_ADMIN_EMAIL    = var.DOKPLOY_ADMIN_EMAIL
   DOKPLOY_ADMIN_PASSWORD = var.DOKPLOY_ADMIN_PASSWORD
   DOKPLOY_VERSION        = var.DOKPLOY_VERSION
   deploy_user            = var.DEPLOY_USER
+  backup = {
+    bucket        = linode_object_storage_bucket.infra_backups.label
+    endpoint      = linode_object_storage_bucket.infra_backups.s3_endpoint
+    access_key    = linode_object_storage_key.infra_backups.access_key
+    secret_key    = linode_object_storage_key.infra_backups.secret_key
+    gpg_recipient = var.GPG_RECIPIENT
+  }
 }
 
 module "network" {
@@ -68,32 +76,19 @@ module "network" {
 module "domain" {
   source = "../../modules/domain"
 
+  depends_on = [module.dokploy-instance]
+
   EMAIL_ADDRESS       = var.EMAIL_ADDRESS
   HOSTNAME_TLD        = var.HOSTNAME_TLD
   WEBSITE_INSTANCE_IP = module.dokploy-instance.instance_ip
   TAGS                = local.TAGS
 }
 
-module "dokploy_dns01" {
-  source = "../../modules/dokploy-dns01"
-
-  resource_prefix = local.resource_prefix
-  instance_ip     = module.dokploy-instance.instance_ip
-  email           = var.EMAIL_ADDRESS
-  hostname_tld    = var.HOSTNAME_TLD
-  deploy_user     = module.dokploy-instance.deploy_user
-}
-
-# Bind the Dokploy dashboard to <DASHBOARD_SUBDOMAIN>.<HOSTNAME_TLD> over HTTPS.
-# Runs only after the wildcard A record exists so Traefik's first ACME HTTP-01
-# challenge can succeed without retry. The Dokploy admin API is loopback-only,
-# so the call is issued from inside the host over SSH using the API key
-# materialized by user_data.sh at /root/.dokploy-api-key. Depends on
-# dokploy_dns01 so the dashboard binding triggers DNS-01, not HTTP-01.
 resource "null_resource" "bind_dokploy_domain" {
-  depends_on = [module.dokploy-instance, module.domain, module.dokploy_dns01]
+  depends_on = [module.dokploy-instance, module.domain]
 
   triggers = {
+    instance_id = tostring(module.dokploy-instance.instance_id)
     instance_ip = module.dokploy-instance.instance_ip
     host        = "${var.DASHBOARD_SUBDOMAIN}.${var.HOSTNAME_TLD}"
     email       = var.EMAIL_ADDRESS
@@ -157,6 +152,16 @@ resource "linode_object_storage_bucket" "infra_backups" {
   }
 }
 
+resource "linode_object_storage_key" "infra_backups" {
+  label = "${local.resource_prefix}-infra-backups-rw"
+
+  bucket_access {
+    bucket_name = linode_object_storage_bucket.infra_backups.label
+    region      = var.REGION
+    permissions = "read_write"
+  }
+}
+
 # SSH config snippet for VS Code Remote-SSH and ad-hoc `ssh dokploy-prod`.
 # Written next to id_ed25519 so paths resolve on whichever machine ran the
 # apply. production.sh idempotently appends an `Include` line to ~/.ssh/config
@@ -168,12 +173,11 @@ resource "linode_object_storage_bucket" "infra_backups" {
 # through a bastion / Tailscale / Cloudflare Tunnel / WireGuard hub) so the
 # raw instance IP is no longer embedded in user ssh configs and can rotate
 # freely with instance replacement.
-resource "local_file" "ssh_config" {
-  filename        = "${path.root}/dokploy.sshconfig"
-  file_permission = "0600"
-  content         = <<-EOT
+locals {
+  dokploy_ssh_config = <<-EOT
     Host dokploy-prod
         HostName ${module.dokploy-instance.instance_ip}
+        HostKeyAlias dokploy-${module.dokploy-instance.instance_id}
         User ${module.dokploy-instance.deploy_user}
         IdentityFile ${abspath(path.root)}/id_ed25519
         IdentitiesOnly yes
@@ -182,21 +186,23 @@ resource "local_file" "ssh_config" {
   EOT
 }
 
+resource "local_file" "ssh_config" {
+  filename        = "${path.root}/dokploy.sshconfig"
+  file_permission = "0600"
+  content         = local.dokploy_ssh_config
+}
+
 module "tailnet" {
   source = "../../modules/tailnet"
 
   home_lan_cidr = var.HOME_LAN_CIDR
 }
 
-# Join the Linode host to the tailnet as tag:dokploy. Mirrors ghcr_login:
-# ships the shared install-tailscale.sh, runs it, rm's the key in the same step.
-# Triggers on host IP + key hash, so rebuilds/rotation re-converge hands-off.
-# --ssh enables Tailscale SSH so later Ansible push reaches home boxes through
-# this host's tailscale0.
 resource "null_resource" "tailscale_join" {
   depends_on = [module.dokploy-instance, module.tailnet]
 
   triggers = {
+    instance_id = tostring(module.dokploy-instance.instance_id)
     instance_ip = module.dokploy-instance.instance_ip
     key_hash    = sha256(module.tailnet.cloud_auth_key)
   }
@@ -226,18 +232,6 @@ resource "null_resource" "tailscale_join" {
       EOT
     ]
   }
-}
-
-module "acme_backup" {
-  source = "../../modules/acme-backup"
-
-  region          = var.REGION
-  resource_prefix = local.resource_prefix
-  bucket_name     = linode_object_storage_bucket.infra_backups.label
-  endpoint        = linode_object_storage_bucket.infra_backups.s3_endpoint
-  gpg_recipient   = var.GPG_RECIPIENT
-  instance_ip     = module.dokploy-instance.instance_ip
-  deploy_user     = module.dokploy-instance.deploy_user
 }
 
 # TODO: Add a GitLab/GitHub provider resource to manage the chezmoi generic package artifact in the self-hosted GitLab instance (enki).
