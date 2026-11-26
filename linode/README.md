@@ -91,9 +91,9 @@ manual deploy, export it (or set it in `linode/environments/dokploy/.env`) befor
 `dokploy.sh`. The `latest` default is intentionally unused so deploys are
 explicit and reproducible.
 
-Stage 2 also reads the single Docker Swarm node's identity from Dokploy.
-A replacement node reruns registry login, environment publication, deployment
-and verification even when image tags and configuration are unchanged.
+Stage 2 uses Production's `dokploy.sshconfig` to identify the Linode and install
+the managed key. CI renders the same SSH config on its fresh runner. A new
+Linode gets a registry login and deployment even if the image tags are unchanged.
 
 ### Control-plane backup/restore
 
@@ -129,7 +129,7 @@ credentials before a deploy can pull. This is owned by the **dokploy**
 environment via `terraform_data.ghcr_registry`, which calls Dokploy's
 `registry.create`/`registry.update` — Dokploy then runs `docker login
 ghcr.io` on the host (writing `/root/.docker/config.json`). Re-runs when the
-credential or Docker node changes, so rotation and replacement are automatic.
+credential or Linode instance changes, so rotation and replacement are automatic.
 
 Setup:
 

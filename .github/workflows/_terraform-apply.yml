@@ -58,6 +58,17 @@ jobs:
     steps:
       - *checkout
       - *setup
+      - &host
+        name: Render the Production SSH target for Stage 2
+        if: ${{ inputs.label == 'dokploy' }}
+        working-directory: linode/environments/production
+        run: |
+          set -euo pipefail
+          set -a
+          source .env
+          set +a
+          terraform init -input=false -backend-config=backend.hcl
+          terraform console <<< 'jsonencode(local.dokploy_ssh_config)' | jq -er 'fromjson' > dokploy.sshconfig
       - &plan
         env:
           BW_CLIENTID: ${{ secrets.BW_CLIENTID }}
@@ -113,6 +124,7 @@ jobs:
     steps:
       - *checkout
       - *setup
+      - *host
       - *plan
       - name: terraform apply (${{ inputs.script }})
         if: ${{ steps.plan.outputs.has_changes == 'true' }}

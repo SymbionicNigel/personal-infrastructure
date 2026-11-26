@@ -79,26 +79,6 @@ provider "dokploy" {
   api_key = var.DOKPLOY_API_KEY
 }
 
-data "http" "host_nodes" {
-  url    = "${local.dokploy_api_base}/trpc/cluster.getNodes?input=${urlencode(jsonencode({ json = {} }))}"
-  method = "GET"
-  request_headers = {
-    "x-api-key"    = var.DOKPLOY_API_KEY
-    "Content-Type" = "application/json"
-  }
-
-  lifecycle {
-    postcondition {
-      condition     = self.status_code == 200
-      error_message = "cluster.getNodes returned ${self.status_code}."
-    }
-    postcondition {
-      condition     = try(length(trimspace(one(jsondecode(self.response_body).result.data.json).ID)) > 0, false)
-      error_message = "Expected exactly one Docker node with a nonempty identity."
-    }
-  }
-}
-
 resource "dokploy_project" "main" {
   name        = var.DOKPLOY_PROJECT_NAME
   description = "Primary services managed by Terraform"
@@ -122,8 +102,6 @@ data "http" "project_one" {
 }
 
 locals {
-  dokploy_host_id = one(jsondecode(data.http.host_nodes.response_body).result.data.json).ID
-
   # Response is wrapped by the superjson transformer: result.data.json.<payload>
   project_envs = jsondecode(data.http.project_one.response_body).result.data.json.environments
   production_env_id = one([
@@ -152,7 +130,7 @@ resource "dokploy_compose" "stack" {
 # because it expects the full apiUpdateCompose payload.
 # Keying triggers_replace on the env hash means any partial change re-pushes.
 resource "terraform_data" "compose_env" {
-  triggers_replace = sha256("${local.dokploy_host_id}\n${jsonencode(local.compose_env)}")
+  triggers_replace = sha256(jsonencode(local.compose_env))
 
   provisioner "local-exec" {
     environment = {
@@ -179,7 +157,11 @@ resource "terraform_data" "compose_env" {
 # tag or env change wouldn't roll out. Replicate its deploy call whenever the
 # rendered content OR the pushed env changes -- keyed on a combined hash.
 resource "terraform_data" "redeploy" {
-  triggers_replace = sha256("${local.dokploy_host_id}\n${local.compose_content}\n${jsonencode(local.compose_env)}")
+  triggers_replace = sha256("${local.compose_content}\n${jsonencode(local.compose_env)}")
+
+  lifecycle {
+    replace_triggered_by = [terraform_data.ghcr_registry]
+  }
 
   provisioner "local-exec" {
     environment = {
@@ -204,11 +186,10 @@ resource "terraform_data" "redeploy" {
 # requiring every expected service to hold "running" state for a few
 # consecutive samples. Failure here fails the apply, making "deploy
 # success" mean what it says.
-#
-# Keyed on the same trigger as redeploy so the verify runs exactly
-# once per deploy attempt.
 resource "terraform_data" "deploy_verify" {
-  triggers_replace = terraform_data.redeploy.triggers_replace
+  lifecycle {
+    replace_triggered_by = [terraform_data.redeploy]
+  }
 
   provisioner "local-exec" {
     environment = {
@@ -219,8 +200,6 @@ resource "terraform_data" "deploy_verify" {
     }
     command = "${path.module}/verify-deploy.sh"
   }
-
-  depends_on = [terraform_data.redeploy]
 }
 
 # Shared S3 destination for Dokploy's native backups. Credentials are the
@@ -315,7 +294,11 @@ locals {
 # the host (Dokploy sets registryType=cloud → execAsync). triggers_replace on the
 # cred hash means a PAT rotation re-runs the login, preserving today's behaviour.
 resource "terraform_data" "ghcr_registry" {
-  triggers_replace = sha256(join("|", [local.dokploy_host_id, var.GHCR_OWNER, var.GHCR_PAT]))
+  triggers_replace = sha256(join("|", [var.GHCR_OWNER, var.GHCR_PAT]))
+
+  lifecycle {
+    replace_triggered_by = [terraform_data.host.triggers_replace.instance_id]
+  }
 
   provisioner "local-exec" {
     environment = {

@@ -173,10 +173,8 @@ resource "linode_object_storage_key" "infra_backups" {
 # through a bastion / Tailscale / Cloudflare Tunnel / WireGuard hub) so the
 # raw instance IP is no longer embedded in user ssh configs and can rotate
 # freely with instance replacement.
-resource "local_file" "ssh_config" {
-  filename        = "${path.root}/dokploy.sshconfig"
-  file_permission = "0600"
-  content         = <<-EOT
+locals {
+  dokploy_ssh_config = <<-EOT
     Host dokploy-prod
         HostName ${module.dokploy-instance.instance_ip}
         HostKeyAlias dokploy-${module.dokploy-instance.instance_id}
@@ -186,6 +184,12 @@ resource "local_file" "ssh_config" {
         StrictHostKeyChecking accept-new
         UserKnownHostsFile ~/.ssh/known_hosts_dokploy
   EOT
+}
+
+resource "local_file" "ssh_config" {
+  filename        = "${path.root}/dokploy.sshconfig"
+  file_permission = "0600"
+  content         = local.dokploy_ssh_config
 }
 
 module "tailnet" {

@@ -86,10 +86,29 @@ resource "linode_instance" "dokploy_main" {
 
   provisioner "local-exec" {
     interpreter = ["bash", "-c"]
-    command     = "ssh -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile=/dev/null -i ${path.root}/id_ed25519 ${var.deploy_user}@${one(self.ipv4)} sudo cat /root/.dokploy-api-key > ${path.root}/.dokploy-api-key"
-  }
-
-  lifecycle {
-    ignore_changes = [metadata]
+    environment = {
+      DESTINATION = jsonencode({
+        name            = "Restore from infra-backups"
+        provider        = "Other"
+        bucket          = var.backup.bucket
+        region          = var.region
+        endpoint        = var.backup.endpoint
+        accessKey       = var.backup.access_key
+        secretAccessKey = var.backup.secret_key
+        additionalFlags = []
+      })
+    }
+    command = <<-EOT
+      set -euo pipefail
+      umask 077
+      printf %s "$DESTINATION" | ssh -o BatchMode=yes -o StrictHostKeyChecking=accept-new \
+        -o HostKeyAlias=dokploy-${self.id} -o UserKnownHostsFile=~/.ssh/known_hosts_dokploy \
+        -i "${path.root}/id_ed25519" ${var.deploy_user}@${one(self.ipv4)} \
+        'set -eu
+         key=$(sudo -n cat /root/.dokploy-api-key)
+         curl -fsS -H "x-api-key: $key" -H "Content-Type: application/json" --data-binary @- \
+           http://127.0.0.1:3000/api/destination.create >/dev/null
+         printf %s "$key"' > "${path.root}/.dokploy-api-key"
+    EOT
   }
 }

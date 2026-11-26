@@ -11,34 +11,17 @@ Use this runbook when a reviewed Production plan replaces the existing VM.
    `control-plane/` before provisioning proceeds.
 2. **After replacement:** leave **Deploy Dokploy** waiting for approval.
    Production has provisioned the host; Stage 2 has not started its plan.
-3. **Restore in the UI.** Open the replacement dashboard and sign in with the
-   bootstrap administrator. Under **S3 Destinations**, register the existing
-   backup bucket, endpoint, region and credentials. Go to **Web Server →
-   Backups → Restore Backup** and select the exact archive from step 1.
+3. **Restore in the UI.** Sign in to the replacement dashboard with the
+   bootstrap administrator. In **Web Server → Backups → Restore Backup**, select
+   **Restore from infra-backups** and the exact archive from step 1.
    Wait for Dokploy's restore result. If the outcome is unclear, inspect it
    before starting another restore.
-4. **Finish host recovery.** Sign in with the restored administrator. Update
-   the address under **Web Server → Server → Update IP** if it changed, then
-   reload Dokploy and Traefik. Confirm the expected projects, registry
-   and backup destination are present. In the restored organization, create
-   a host provisioning API key with the bootstrap rate limit (1,000/hour).
-   On the replacement host, in an interactive Bash shell, install it without
-   putting it in shell history:
+4. **Approve Deploy Dokploy.** Stage 2 authenticates with its existing managed
+   key, sets Dokploy's server IP to the Linode address, installs the working
+   key on the host, logs into the registry and deploys the stack.
+   The archive must contain the managed key's record. If authentication fails,
+   the deployment stops; don't repeat the restore just to retry a deployment.
 
-   ```bash
-   read -rs -p 'Host provisioning key: ' key
-   printf '\n'
-   printf '%s' "$key" | sudo -n install -m 0600 -o root -g root /dev/stdin /root/.dokploy-api-key
-   unset key
-   ```
-
-   The restore overwrites the bootstrap key's database record. **Keep Stage
-   2's managed key unchanged** if its record was restored.
-5. **Approve Deploy Dokploy.** Stage 2 plans and applies any changes. Check
-   workload health and HTTPS. Keep the source archive until a post-recovery
-   backup has been proven usable.
-
-If Stage 2 fails, address the failure and rerun the failed job. A Stage 2
-retry does not require repeating a successful UI restore.
+Keep the source archive until a post-recovery backup has been proven usable.
 
 [Dokploy's native backup and restore guide](https://docs.dokploy.com/docs/core/backups)
